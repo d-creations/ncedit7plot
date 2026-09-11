@@ -33,6 +33,7 @@ try:
         MachineConfig,
     )
     from ncplot7py.domain.cnc_state import CNCState
+    from ncplot7py.domain.tool_compensation import load_tool_data
     from ncplot7py.domain.exceptions import ExceptionNode
 except Exception as e:
     # If imports fail, we can't do much. We'll log it and fail later if needed.
@@ -286,8 +287,9 @@ def handle_list_machines() -> Dict[str, Any]:
     # Add regex patterns to each machine
     for machine in machines:
         if get_machine_regex_patterns:
-            machine["regexPatterns"] = get_machine_regex_patterns(machine["controlType"])
+            machine["regexPatterns"] = get_machine_regex_patterns(machine["machineName"])
         config = get_machine_config(machine["machineName"])
+        machine["toolSelection"] = config.tool_selection
         machine["variablePrefix"] = config.variable_prefix
         machine["fileExtensions"] = config.file_extensions
 
@@ -425,25 +427,10 @@ def handle_execute_programs(
             
             # Store tool compensation values for later use by compensation handlers
             tool_vals = tool_values_list[idx] if idx < len(tool_values_list) else []
-            tool_data = {}
-            for tv in tool_vals:
-                t_num = tv.get("toolNumber")
-                if t_num is not None:
-                    try:
-                        key = int(t_num)
-                    except ValueError:
-                        key = str(t_num)
-
-                    values = {
-                        "qValue": tv.get("qValue"),  # Quadrant Q1-Q9
-                        "rValue": tv.get("rValue"),  # Tool radius R
-                    }
-                    if "lengthValue" in tv:
-                        values["lengthValue"] = tv.get("lengthValue")
-                    if "edgeNumber" in tv:
-                        values["edgeNumber"] = tv.get("edgeNumber")
-                    tool_data[key] = values
-            state.extra["tool_compensation_data"] = tool_data
+            try:
+                load_tool_data(state, tool_vals, machinedata[idx].get("toolOffsets", []))
+            except ValueError as error:
+                return {"canal": {}, "message": [str(error)], "success": False}
             init_states.append(state)
         else:
             init_states.append(None)
@@ -493,6 +480,15 @@ def handle_execute_programs(
         if total_points == 0 and any(len(p.strip()) > 0 for p in programs) and not engine_output_has_non_plot_data(engine_output):
             logging.info("Real engine returned 0 points for non-empty program. Falling back to mock.")
             use_mock = True
+
+    if use_mock and errors:
+        return {
+            "canal": {},
+            "message": ["NC execution failed"],
+            "success": False,
+            "errors": errors,
+            "hasErrors": True,
+        }
 
     if use_mock:
         result = run_mock_parser(machinedata)

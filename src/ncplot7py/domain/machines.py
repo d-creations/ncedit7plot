@@ -40,6 +40,30 @@ class MachineConfig:
     max_execution_nodes: int = 100000
     file_extensions: Dict[str, Any] = field(default_factory=dict)
     regex_patterns: Dict[str, Any] = field(default_factory=dict)
+    tool_selection: Dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self):
+        policy = self.tool_selection
+        if not isinstance(policy, dict):
+            raise ValueError("tool_selection must be an object")
+        if not policy:
+            return
+        if policy.get("mode") not in {"direct", "packed", "station"}:
+            raise ValueError("Unsupported tool_selection mode")
+        if policy.get("offset_scope") not in {"global", "tool"}:
+            raise ValueError("Unsupported offset_scope")
+        if type(policy.get("named_tools")) is not bool:
+            raise ValueError("named_tools must be boolean")
+        if policy["mode"] != "direct":
+            digits = policy.get("offset_digits")
+            if type(digits) is not int or not 1 <= digits <= 4:
+                raise ValueError("offset_digits must be between 1 and 4")
+        address = policy.get("offset_address")
+        if address is not None and (not isinstance(address, str) or len(address) != 1 or not address.isalpha()):
+            raise ValueError("offset_address must be a single letter")
+        codes = policy.get("subtool_codes", [])
+        if not isinstance(codes, list) or any(type(code) is not int or code < 100 for code in codes):
+            raise ValueError("subtool_codes must contain full positive tool codes")
 
 
 # --- Machine Definitions ---
@@ -96,7 +120,8 @@ def load_machine_configs():
                     seventh_axis_maps_to=val.get('seventh_axis_maps_to'),
                     max_execution_nodes=val.get('max_execution_nodes', 100000),
                     file_extensions=val.get('file_extensions', {}),
-                    regex_patterns=val.get('regex_patterns', {})
+                    regex_patterns=val.get('regex_patterns', {}),
+                    tool_selection=deepcopy(val.get('tool_selection', {})),
                 )
                 
         # Second pass: resolve aliases
@@ -126,7 +151,34 @@ def get_machine_regex_patterns(control_type: str) -> Dict[str, Any]:
                 config = c
                 break
 
-    return deepcopy(config.regex_patterns)
+    patterns = deepcopy(config.regex_patterns)
+    policy = config.tool_selection
+    if policy:
+        digits = len(str(config.tool_range[1]))
+        number = rf"[1-9][0-9]{{0,{digits - 1}}}"
+        mode = policy.get("mode", "direct")
+        if mode == "direct":
+            pattern = rf"T\s*0*([0-9]{{1,{digits}}})(?![\d.])"
+            if policy.get("named_tools"):
+                pattern = rf'(?:{pattern}|T\s*=\s*"[^"]+")'
+        else:
+            offset_digits = int(policy["offset_digits"])
+            if mode == "packed":
+                pattern = rf"T\s*0*({number})[0-9]{{{offset_digits}}}(?![\d.])"
+            else:
+                codes = "|".join(str(code) for code in policy.get("subtool_codes", []))
+                zeros = "0" * offset_digits
+                selections = rf"{number}{zeros}"
+                capture = number
+                if codes:
+                    selections = rf"{codes}|{selections}"
+                    capture = rf"{codes}|{capture}"
+                pattern = rf"T\s*(?=0*(?:{selections})(?![\d.]))0*({capture})(?:{zeros})?(?![\d.])"
+        patterns["tools"] = {
+            "pattern": pattern,
+            "description": "Tool identities generated from the machine tool_selection policy",
+        }
+    return patterns
 
 def get_available_machines() -> List[Dict[str, str]]:
     """Return a list of available machines and their control types."""

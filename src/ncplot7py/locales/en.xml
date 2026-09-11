@@ -28,6 +28,7 @@
   <message id="1:-105">Arc radius too small for tool compensation - tool would gouge workpiece</message>
   <message id="1:-106">Tool compensation approach angle invalid at line {line}</message>
   <message id="1:-107">Tool radius '{value}' is invalid or zero</message>
+  <message id="1:-108">Center-path radius compensation (G41/G42) is not implemented for machine {value}</message>
 
   <!-- CNCError (typ=3) -->
   <message id="3:0">None</message>

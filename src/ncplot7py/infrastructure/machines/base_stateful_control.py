@@ -141,6 +141,9 @@ class BaseStatefulCanal(BaseNCCanalInterface):
                 except Exception:
                     logger.debug("node idx=%s -> pts=%s dur=%s", steps, 'Y' if pts is not None else 'N', dur)
 
+            if self._state.tool_compensation.radius_mode == "OFF":
+                self._tool_path_compensator.reset()
+
             if pts is not None:
                 motion_node = node.copy()
                 active_tool = self._state.extra.get("active_tool_number")

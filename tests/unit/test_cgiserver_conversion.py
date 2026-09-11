@@ -25,6 +25,30 @@ def _load_cgiserver_module():
 
 
 class TestCgiServerConversion(unittest.TestCase):
+    def test_api_passes_independent_offsets_to_execution(self):
+        cgiserver = _load_cgiserver_module()
+        result = cgiserver.handle_execute_programs([{
+            "machineName": "FANUC_MILL", "canalNr": "1",
+            "program": "T1\nG17\nG41 D2 G1 X10 F100\nG40\nG41 D3 G1 X20\nG40",
+            "toolValues": [{"toolNumber": 1}],
+            "toolOffsets": [{"offsetNumber": 2, "rValue": 1}, {"offsetNumber": 3, "rValue": 2}],
+        }], tool_path_mode="center")
+        self.assertTrue(result["success"])
+        self.assertFalse(result.get("errors"))
+        segments = result["canal"]["1"]["segments"]
+        self.assertEqual({segment["toolNumber"] for segment in segments}, {1})
+        self.assertEqual(segments[0]["points"][0]["y"], 1)
+        self.assertEqual(segments[-1]["points"][-1]["y"], 2)
+
+    def test_api_rejects_duplicate_offset_data(self):
+        cgiserver = _load_cgiserver_module()
+        result = cgiserver.handle_execute_programs([{
+            "machineName": "FANUC_MILL", "program": "T1",
+            "toolOffsets": [{"offsetNumber": 2}, {"offsetNumber": 2}],
+        }])
+        self.assertFalse(result["success"])
+        self.assertIn("Duplicate offset", result["message"][0])
+
     def test_line_alignment_syntax_describes_fanuc_and_siemens(self):
         cgiserver = _load_cgiserver_module()
 

@@ -28,6 +28,7 @@
   <message id="1:-105">Bogenradius zu klein für Werkzeugkompensation - Werkzeug würde Werkstück beschädigen</message>
   <message id="1:-106">Anfahrwinkel für Werkzeugkompensation ungültig in Zeile {line}</message>
   <message id="1:-107">Werkzeugradius '{value}' ist ungültig oder Null</message>
+  <message id="1:-108">Werkzeugmittelpunktbahn mit Radiuskompensation (G41/G42) ist für Maschine {value} nicht implementiert</message>
 
   <!-- CNCError (typ=3) -->
   <message id="3:0">Keine</message>

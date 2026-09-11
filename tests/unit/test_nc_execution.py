@@ -146,7 +146,7 @@ class TestNCExecutionEngine(unittest.TestCase):
         engine = NCExecutionEngine(control)
 
         result = engine.get_Syncro_plot(
-            ["T2\nG98\nG83 Z-4 R-1 Q2000 F100"],
+            ["T0202\nG98\nG83 Z-4 R-1 Q2000 F100"],
             synch=False,
         )
 

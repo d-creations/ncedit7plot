@@ -4,6 +4,109 @@ This plan separates control-specific command interpretation from shared
 toolpath geometry. The existing linear, circular, cycle, feed, and duration
 calculations remain the source of programmed motion.
 
+## Implemented tool identity and offset selection (2026-09-11)
+
+`src/ncplot7py/config/machines.json` is the source of tool-command policy.
+Each shipped profile declares `tool_selection`; no machine-name substring or
+tool-range overflow is used to guess whether a T word includes an offset.
+The existing configured execution chain remains in place. Tool handlers decode
+the policy before compensation handlers and motion execute.
+
+| Policy field | Meaning |
+| --- | --- |
+| `mode: direct` | The complete numeric T word is the tool ID. Numeric zero clears the active tool. |
+| `mode: packed` | Split the last `offset_digits` digits as the offset. A zero tool portion changes only the offset. |
+| `mode: station` | A station followed by zero digits selects that station; short T words select wear offsets. Only listed nonzero-suffix subtool codes are accepted. |
+| `named_tools` | Permit exact string tool identifiers, including quoted numeric names. |
+| `offset_address` | Optional separate selector address, currently D for mill/Siemens profiles. |
+| `offset_scope` | `global` indexes by register; `tool` indexes by exact tool ID and register. |
+| `subtool_codes` | Full numeric identities for builder-specific multi-tool positions. |
+
+The shipped FANUC_TURN policy is a two-digit-offset convention, not a universal
+FANUC specification. The STAR policies follow SR20J2B section 8-8-2: T100 selects
+station 1, T01 selects wear offset 1, and T00 cancels wear. Configured T3411/T3412
+remain distinct tool identities. The list covers documented unit variants;
+it does not certify which unit is installed on a particular machine. Adapt the
+profile to the actual builder configuration. Unsupported station codes are
+diagnosed, not interpreted as generic packed offsets.
+
+```mermaid
+flowchart LR
+    JSON[machines.json tool_selection] --> Detect[Generated frontend detection regex]
+    JSON --> Tool[Configured execution-chain tool handler]
+    NC[Parsed NC node] --> Tool
+    Tool --> Identity[Active tool identity]
+    Tool --> Offset[Active offset register]
+    API[API toolValues and toolOffsets] --> Tables[Per-channel validated tables]
+    Identity --> Resolver[ToolDataResolver]
+    Offset --> Resolver
+    Tables --> Resolver
+    Resolver --> Comp[G41/G42 compensation state]
+    Comp --> Geometry[Existing shared path projector]
+```
+
+`get_machine_regex_patterns(machineName)` derives `regexPatterns.tools` from
+the policy for the editor's static tool list. The old handwritten tools regexes
+were removed. The extraction contract is fixed: capture group 1 contains the
+numeric tool ID; complete quoted T assignments contain exact named IDs. Other
+matches are ignored. No configurable capture-group or uncaptured-match flags
+are sent. Custom numeric patterns must capture the identifier in group 1;
+patterns relying on whole-match fallback or another group must be updated.
+This list is not an execution trace: loops, expressions and activation remain
+the backend's responsibility.
+The machine API also returns the configured policy as `toolSelection`.
+
+### API tool and offset tables
+
+Both CGI and FastAPI import adapters use the same atomic `load_tool_data` helper.
+The optional `machinedata[].toolOffsets` array is independent of `toolValues`:
+
+```json
+{
+  "toolPathMode": "center",
+  "machinedata": [{
+    "machineName": "FANUC_MILL",
+    "canalNr": "1",
+    "program": "T1\nG17\nG41 D2 G1 X10 F100\nG40\nG41 D3 G1 X20\nG40",
+    "toolValues": [{"toolNumber": 1}],
+    "toolOffsets": [
+      {"offsetNumber": 2, "qValue": 3, "rValue": 0.4},
+      {"offsetNumber": 3, "qValue": 3, "rValue": 0.8}
+    ]
+  }]
+}
+```
+
+For Siemens `offset_scope: tool`, each offset record must also include
+`toolNumber`, for example `{"toolNumber":"CUTTER","offsetNumber":2,"rValue":4}`.
+For global FANUC tables, omit `toolNumber` on offset records. IDs `1` and `"1"`
+are distinct. Register numbers must be positive integers; zero is a command
+to cancel offsets, not a stored register. Q/R/length values must be finite.
+Duplicate tools/registers and malformed records are rejected before execution.
+Each channel owns independent tables and active selections.
+
+Legacy requests with no offset records continue to resolve Q/R by tool ID.
+When a nonempty explicit offset table is supplied, a missing/unselected record
+is an error at compensation activation; it never falls back to tool defaults.
+Register zero clears resolved compensation values. D selection occurs before
+G41/G42 lookup, and changing D while compensation is active refreshes the
+resolved data. An offset record owns its entire compensation data; absent
+fields are not merged from another tool or register. Supplied R is the resolved
+radius, not an automatically combined geometry-plus-wear value.
+
+### Boundaries of this increment
+
+- T activation remains immediate, matching existing engine behavior; M6
+  preselection/change sequencing is not implemented here.
+- Q is retained as tip-orientation data; no new turning nose/Q geometry is
+  claimed. Existing milling radius projection is tested with multiple offsets.
+- Optional `lengthValue` and `edgeNumber` pass through unchanged; H-table lookup,
+  Siemens default-edge rules, geometry/wear summation and TCP remain pending.
+- Offset editing UI and program-comment offset persistence are not implemented.
+  Frontend execution requests and immutable run inputs can transport the array.
+- Deploy the backend package and clients together and reload machine metadata;
+  raw `regex_patterns` no longer contains the generated tool detection pattern.
+
 ## Scope and terminology
 
 - `effective` path: the programmed contour currently produced by the engine.

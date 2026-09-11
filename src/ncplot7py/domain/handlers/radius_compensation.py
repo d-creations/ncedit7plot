@@ -22,8 +22,9 @@ class RadiusCompensationCommandHandler(Handler):
         if command == "G40":
             state.tool_compensation.radius_mode = "OFF"
             state.tool_compensation.radius = None
+            state.tool_compensation.startup_pending = False
             state.tool_radius = None
-        elif command in {"G41", "G42"}:
+        elif command in {"G41", "G42"} or state.tool_compensation.radius_mode != "OFF":
             tool = ToolDataResolver().resolve(state)
             line_number = getattr(node, "nc_code_line_nr", 0) or 0
             if tool.tool_id is None:
@@ -42,19 +43,19 @@ class RadiusCompensationCommandHandler(Handler):
                     line=line_number,
                 )
 
-            state.tool_compensation.radius_mode = "LEFT" if command == "G41" else "RIGHT"
+            if command in {"G41", "G42"}:
+                if state.tool_compensation.radius_mode == "OFF":
+                    state.tool_compensation.startup_pending = (
+                        state.machine_config is not None
+                        and state.machine_config.control_type == "FANUC"
+                    )
+                state.tool_compensation.radius_mode = "LEFT" if command == "G41" else "RIGHT"
             state.tool_compensation.radius = tool.radius
             state.tool_compensation.tip_orientation = tool.tip_orientation
             state.tool_compensation.edge_number = tool.edge_number
             state.tool_compensation.activation_line = line_number
             state.tool_radius = tool.radius
             state.tool_quadrant = tool.tip_orientation
-
-            if "D" in node.command_parameter:
-                try:
-                    state.tool_compensation.edge_number = int(node.command_parameter["D"])
-                except (TypeError, ValueError):
-                    pass
 
         return super().handle(node, state)
 

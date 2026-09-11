@@ -6,6 +6,58 @@ from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
 from ncplot7py.shared.point import Point
+from ncplot7py.domain.exceptions import ExceptionTyps, raise_nc_error
+
+
+def load_tool_data(state, tool_values: list, tool_offsets: list) -> None:
+    def identifier(value):
+        if type(value) is int and value >= 0:
+            return value
+        if isinstance(value, str) and value:
+            return value
+        raise ValueError("toolNumber must be a nonnegative integer or a nonempty name")
+
+    def values(record):
+        result = {}
+        for field in ("qValue", "rValue", "lengthValue", "edgeNumber"):
+            value = record.get(field)
+            if value is None:
+                continue
+            if type(value) not in (int, float) or not math.isfinite(value):
+                raise ValueError(f"{field} must be a finite number")
+            if field == "edgeNumber" and (value < 0 or int(value) != value):
+                raise ValueError("edgeNumber must be a nonnegative integer")
+            result[field] = value
+        return result
+
+    if not isinstance(tool_values, list) or not isinstance(tool_offsets, list):
+        raise ValueError("toolValues and toolOffsets must be arrays")
+    tools = {}
+    offsets = {}
+    for record in tool_values:
+        if not isinstance(record, dict):
+            raise ValueError("Tool records must be objects")
+        key = identifier(record.get("toolNumber"))
+        if key in tools:
+            raise ValueError("Duplicate toolNumber")
+        tools[key] = values(record)
+    policy = state.machine_config.tool_selection if state.machine_config else {}
+    scope = policy.get("offset_scope", "global")
+    for record in tool_offsets:
+        if not isinstance(record, dict):
+            raise ValueError("Offset records must be objects")
+        register = record.get("offsetNumber")
+        if type(register) is not int or register <= 0:
+            raise ValueError("offsetNumber must be a positive integer; zero cancels offsets")
+        tool = identifier(record.get("toolNumber")) if scope == "tool" else None
+        if scope != "tool" and "toolNumber" in record:
+            raise ValueError("Global offsets must not specify toolNumber")
+        key = (tool, register)
+        if key in offsets:
+            raise ValueError("Duplicate offset record")
+        offsets[key] = values(record)
+    state.extra["tool_compensation_data"] = tools
+    state.extra["tool_offset_data"] = offsets
 
 
 @dataclass
@@ -15,6 +67,7 @@ class ToolCompensationState:
     tip_orientation: Optional[int] = None
     edge_number: Optional[int] = None
     activation_line: Optional[int] = None
+    startup_pending: bool = False
 
 
 @dataclass(frozen=True)
@@ -36,10 +89,26 @@ class ToolDataResolver:
             tool_id = state.extra.get("active_tool_name")
         return tool_id
 
-    def resolve(self, state) -> ActiveToolGeometry:
+    def resolve(self, state, require_offset: bool = True) -> ActiveToolGeometry:
         tool_id = self.active_tool_id(state)
         tool_values = state.extra.get("tool_compensation_data", {})
         values = tool_values.get(tool_id, {}) if tool_id is not None else {}
+        register = state.extra.get("active_offset_number")
+        offsets = state.extra.get("tool_offset_data", {})
+        if register == 0:
+            values = {}
+        elif offsets:
+            policy = state.machine_config.tool_selection if state.machine_config else {}
+            owner = tool_id if policy.get("offset_scope") == "tool" else None
+            if register is None or (owner, register) not in offsets:
+                values = {}
+                if require_offset:
+                    raise_nc_error(
+                        ExceptionTyps.NCCodeErrors, -100,
+                        message=f"No compensation data for selected offset {register} and tool {tool_id}",
+                    )
+            else:
+                values = offsets[(owner, register)]
         return ActiveToolGeometry(
             tool_id=tool_id,
             radius=self._optional_float(values.get("rValue")),
@@ -79,10 +148,12 @@ class ToolPathCompensator:
     def __init__(self) -> None:
         self._previous_points: Optional[List[Point]] = None
         self._previous_signature: Optional[Tuple[object, ...]] = None
+        self._pending_entry: Optional[List[Point]] = None
 
     def reset(self) -> None:
         self._previous_points = None
         self._previous_signature = None
+        self._pending_entry = None
 
     def project(self, points: List[Point], state) -> List[Point]:
         compensation = state.tool_compensation
@@ -109,8 +180,35 @@ class ToolPathCompensator:
             plane,
             ToolDataResolver.active_tool_id(state),
         )
-        if self._previous_points is not None and self._previous_signature == signature:
-            self._join_paths(self._previous_points, projected, axes, radius)
+        has_planar_motion = any(
+            math.hypot(
+                getattr(end, axes[0]) - getattr(start, axes[0]),
+                getattr(end, axes[1]) - getattr(start, axes[1]),
+            ) > 1e-12
+            for start, end in zip(points, points[1:])
+        )
+        if not has_planar_motion:
+            return projected
+
+        if compensation.startup_pending:
+            self.reset()
+            compensation.startup_pending = False
+            projected[0] = Point(**vars(points[0]))
+            self._pending_entry = projected
+        elif self._previous_signature == signature:
+            if self._pending_entry is not None:
+                entry = self._pending_entry
+                for axis in axes:
+                    start_value = getattr(entry[0], axis)
+                    end_value = getattr(projected[0], axis)
+                    for index, point in enumerate(entry):
+                        fraction = index / (len(entry) - 1)
+                        setattr(point, axis, start_value + fraction * (end_value - start_value))
+                self._pending_entry = None
+            elif self._previous_points is not None:
+                self._join_paths(self._previous_points, projected, axes, radius)
+        else:
+            self._pending_entry = None
 
         self._previous_points = projected
         self._previous_signature = signature

@@ -12,8 +12,9 @@ class StarFanucToolHandler(FanucToolHandler):
     """Handle Star Fanuc tool changes and return the B axis to zero."""
 
     def handle(self, node: NCCommandNode, state: CNCState) -> Tuple[Optional[List], Optional[float]]:
+        previous_tool = state.extra.get("active_tool_code")
         self._handle_tool_change(node, state)
-        if "T" not in node.command_parameter:
+        if "T" not in node.command_parameter or state.extra.get("active_tool_code") == previous_tool:
             if self.next_handler is not None:
                 return self.next_handler.handle(node, state)
             return None, None

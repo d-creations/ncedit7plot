@@ -3,10 +3,71 @@ import unittest
 from ncplot7py.application.nc_execution import NCExecutionEngine
 from ncplot7py.domain.cnc_state import CNCState
 from ncplot7py.domain.machines import get_machine_config
+from ncplot7py.domain.tool_compensation import load_tool_data
 from ncplot7py.infrastructure.machines.base_stateful_control import UniversalConfigDrivenControl
 
 
 class TestRadiusCompensationExecution(unittest.TestCase):
+    def test_fanuc_entry_uses_next_executed_variable_motion(self):
+        for machine_name, selection, endpoint in (
+            ("FANUC_MILL", "T1", 10),
+            ("FANUC_TURN", "T0101", 20),
+            ("FANUC_STAR_x-D_y-R_z_R", "T100\nT01", 20),
+        ):
+            for command, expected_x in (("G41", 9), ("G42", 11)):
+                with self.subTest(machine=machine_name, command=command):
+                    plot = self._execute(
+                        machine_name,
+                        selection + f"\nG17\n#1=5\n{command} G1 X{endpoint} Y0 F100\n"
+                        "#1=#1+5\nGOTO100\nG1 X0 Y-100\n"
+                        f"N100 G1 X{endpoint} Y#1\nG40",
+                        {1: {"rValue": 1.0, "qValue": 0}},
+                        "center",
+                    )
+                    entry, contour = plot[-2:]
+                    self.assertEqual((entry["x"][0], entry["y"][0]), (0, 0))
+                    self.assertAlmostEqual(entry["x"][-1], expected_x)
+                    self.assertAlmostEqual(entry["y"][-1], 0)
+                    self.assertAlmostEqual(contour["x"][0], expected_x)
+                    self.assertAlmostEqual(contour["y"][0], 0)
+                    self.assertAlmostEqual(contour["y"][-1], 10)
+
+    def test_fanuc_profiles_share_g17_compensation(self):
+        for machine_name, selection, endpoint in (
+            ("FANUC_MILL", "T1", 10),
+            ("FANUC_TURN", "T0101", 20),
+            ("FANUC_STAR_x-D_y-R_z_R", "T100\nT01", 20),
+        ):
+            with self.subTest(machine=machine_name):
+                plot = self._execute(
+                    machine_name,
+                    selection + f"\nG17\nG41 G1 X{endpoint} Y0 F100\nG1 X{endpoint} Y10\nG40",
+                    {1: {"rValue": 1.0, "qValue": 3}},
+                    "center",
+                )
+                if machine_name.startswith("FANUC_STAR"):
+                    self.assertEqual(len(plot), 3)
+                    plot = plot[1:]
+                self.assertEqual(len(plot), 2)
+                self.assertAlmostEqual(plot[0]["x"][-1], 9.0)
+                self.assertAlmostEqual(plot[0]["y"][-1], 1.0)
+                self.assertAlmostEqual(plot[1]["x"][0], 9.0)
+                self.assertAlmostEqual(plot[1]["y"][0], 1.0)
+
+    def test_d_changes_radius_without_changing_tool_identity(self):
+        state = CNCState(machine_config=get_machine_config("FANUC_MILL"), tool_path_mode="center")
+        load_tool_data(state, [{"toolNumber": 1}], [
+            {"offsetNumber": 2, "rValue": 1},
+            {"offsetNumber": 3, "rValue": 2},
+        ])
+        control = UniversalConfigDrivenControl(init_nc_states=[state])
+        program = "T1\nG17\nD2\nG41 G1 X10 F100\nD3 G1 X20\nG40"
+        plot = NCExecutionEngine(control).get_Syncro_plot([program], synch=False)[0]["plot"]
+        self.assertEqual(len(plot), 2)
+        self.assertEqual({entry["toolNumber"] for entry in plot}, {1})
+        self.assertAlmostEqual(plot[0]["y"][0], 1)
+        self.assertAlmostEqual(plot[1]["y"][-1], 2)
+
     def _execute(self, machine_name, program, tool_values, mode):
         state = CNCState(
             machine_config=get_machine_config(machine_name),
