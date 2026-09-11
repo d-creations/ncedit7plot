@@ -6,6 +6,7 @@ from ncplot7py.interfaces.BaseNCCanal import NCControl as BaseNCControlInterface
 from ncplot7py.interfaces.BaseNCControl import NCCanal as BaseNCCanalInterface
 from ncplot7py.domain.cnc_state import CNCState
 from ncplot7py.domain.exceptions import ExceptionNode, ExceptionTyps, raise_nc_error
+from ncplot7py.domain.tool_compensation import ToolPathCompensator
 from ncplot7py.shared.nc_nodes import NCCommandNode
 from ncplot7py.shared.point import Point
 
@@ -46,6 +47,7 @@ class BaseStatefulCanal(BaseNCCanalInterface):
         self._tool_path: List[Tuple[List[Point], float]] = []
         self._tool_nodes: List[NCCommandNode] = []
         self._exec_sequence: List[NCCommandNode] = []
+        self._tool_path_compensator = ToolPathCompensator()
 
     def get_name(self) -> str:
         return self._name
@@ -72,6 +74,7 @@ class BaseStatefulCanal(BaseNCCanalInterface):
         self._exec_sequence = []
         self._tool_path = []
         self._tool_nodes = []
+        self._tool_path_compensator.reset()
 
         # link nodes in forward/backward direction
         for i in range(len(self._nodes) - 1):
@@ -139,27 +142,34 @@ class BaseStatefulCanal(BaseNCCanalInterface):
                     logger.debug("node idx=%s -> pts=%s dur=%s", steps, 'Y' if pts is not None else 'N', dur)
 
             if pts is not None:
+                motion_node = node.copy()
+                active_tool = self._state.extra.get("active_tool_number")
+                if active_tool is None:
+                    active_tool = self._state.extra.get("active_tool_name")
+                motion_node.set_execution_metadata(
+                    execution_step=steps,
+                    tool_number=active_tool if active_tool is not None else "unknown",
+                )
                 generated_segments = getattr(node, "generated_motion_segments", [])
                 if generated_segments:
                     for segment in generated_segments:
                         segment_points = segment.get("points")
                         if not isinstance(segment_points, list) or not segment_points:
                             continue
-                        segment_node = node.copy()
+                        segment_node = motion_node.copy()
                         segment_node.set_motion_metadata(
                             str(segment.get("geometry", "LINEAR")),
                             str(segment.get("traversal", "FEED")),
                             str(segment.get("source_code", "G01")),
                         )
                         segment_node.set_generated_motion_segments([])
-                        self._tool_path.append((segment_points, float(segment.get("duration", 0.0))))
+                        projected_points = self._tool_path_compensator.project(segment_points, self._state)
+                        self._tool_path.append((projected_points, float(segment.get("duration", 0.0))))
                         self._tool_nodes.append(segment_node)
                 else:
-                    self._tool_path.append((pts, dur or 0.0))
-                    try:
-                        self._tool_nodes.append(node)
-                    except Exception:
-                        pass
+                    projected_points = self._tool_path_compensator.project(pts, self._state)
+                    self._tool_path.append((projected_points, dur or 0.0))
+                    self._tool_nodes.append(motion_node)
 
             next_node = getattr(node, "_next_ncCode", None)
             if next_node is node:
@@ -288,6 +298,7 @@ HANDLER_REGISTRY = {
     "fanuc_mill_speed_mode": ("ncplot7py.domain.handlers.fanuc_mill_cnc.gcode_speed_mode", "FanucMillSpeedModeHandler"),
     "fanuc_mill_work_offset": ("ncplot7py.domain.handlers.fanuc_mill_cnc.gcode_work_offset", "FanucMillWorkOffsetHandler"),
     "fanuc_mill_plane": ("ncplot7py.domain.handlers.fanuc_mill_cnc.gcode_group2_plane", "FanucMillGroup2PlaneHandler"),
+    "fanuc_cutter_comp": ("ncplot7py.domain.handlers.fanuc_mill_cnc.cutter_comp_handler", "FanucCutterCompCommandHandler"),
     
     # Turn Mill Star
     "star_spindle_fluctuation": ("ncplot7py.domain.handlers.star_machine.spindle_fluctuation_handler", "StarSpindleFluctuationHandler"),

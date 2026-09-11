@@ -117,13 +117,36 @@ class FakeControlWrappedExecutionError:
 
 
 class TestNCExecutionEngine(unittest.TestCase):
+    def test_siemens_movements_capture_numeric_and_named_active_tools(self):
+        state = CNCState(machine_config=get_machine_config("SIEMENS_840DI"))
+        control = UniversalConfigDrivenControl(init_nc_states=[state])
+        engine = NCExecutionEngine(control)
+
+        result = engine.get_Syncro_plot(
+            ['T1\nG1 X10 F100\nT="CUTTER"\nG1 X20'],
+            synch=False,
+        )
+
+        plot = result[0]["plot"]
+        self.assertEqual(len(plot), 2)
+        self.assertEqual(
+            [
+                (entry["lineNumber"], entry["executionStep"], entry["toolNumber"])
+                for entry in plot
+            ],
+            [
+                (2, 1, 1),
+                (4, 3, "CUTTER"),
+            ],
+        )
+
     def test_drilling_cycle_plot_contains_classified_primitive_segments(self):
         state = CNCState(machine_config=get_machine_config("FANUC_TURN"))
         control = UniversalConfigDrivenControl(init_nc_states=[state])
         engine = NCExecutionEngine(control)
 
         result = engine.get_Syncro_plot(
-            ["G98\nG83 Z-4 R-1 Q2000 F100"],
+            ["T2\nG98\nG83 Z-4 R-1 Q2000 F100"],
             synch=False,
         )
 
@@ -132,7 +155,9 @@ class TestNCExecutionEngine(unittest.TestCase):
         self.assertEqual({entry["geometry"] for entry in plot}, {"LINEAR"})
         self.assertEqual({entry["traversal"] for entry in plot}, {"RAPID", "FEED"})
         self.assertEqual({entry["sourceCode"] for entry in plot}, {"G00", "G01"})
-        self.assertEqual({entry["lineNumber"] for entry in plot}, {2})
+        self.assertEqual({entry["lineNumber"] for entry in plot}, {3})
+        self.assertEqual({entry["executionStep"] for entry in plot}, {2})
+        self.assertEqual({entry["toolNumber"] for entry in plot}, {2})
 
     def test_g92_plot_contains_classified_threading_primitives(self):
         state = CNCState(machine_config=get_machine_config("FANUC_TURN"))

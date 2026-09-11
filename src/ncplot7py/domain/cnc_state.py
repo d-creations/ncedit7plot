@@ -9,6 +9,8 @@ from dataclasses import dataclass, field, asdict
 from copy import deepcopy
 from typing import Dict, List, Optional, Tuple
 
+from ncplot7py.domain.tool_compensation import ToolCompensationState
+
 # Import MachineConfig (using string forward ref or direct import if possible)
 # To avoid circular imports if machines imports cnc_state (it doesn't), we can import here.
 # However, to be safe, we'll use Any or object for now, or try import.
@@ -65,6 +67,7 @@ class CNCState:
     tool_radius: Optional[Numeric] = None
     tool_quadrant: Optional[int] = None
     tool_path_mode: str = "effective"
+    tool_compensation: ToolCompensationState = field(default_factory=ToolCompensationState)
 
     # Program parameters / variables (#500 style) and DDDP table if present
     parameters: Dict[str, Numeric] = field(default_factory=dict)

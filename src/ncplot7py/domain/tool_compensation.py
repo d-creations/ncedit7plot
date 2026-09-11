@@ -1,0 +1,233 @@
+"""Shared state and vector geometry for tool-radius compensation."""
+from __future__ import annotations
+
+import math
+from dataclasses import dataclass
+from typing import List, Optional, Tuple
+
+from ncplot7py.shared.point import Point
+
+
+@dataclass
+class ToolCompensationState:
+    radius_mode: str = "OFF"
+    radius: Optional[float] = None
+    tip_orientation: Optional[int] = None
+    edge_number: Optional[int] = None
+    activation_line: Optional[int] = None
+
+
+@dataclass(frozen=True)
+class ActiveToolGeometry:
+    tool_id: object
+    radius: Optional[float] = None
+    tip_orientation: Optional[int] = None
+    length: Optional[float] = None
+    edge_number: Optional[int] = None
+
+
+class ToolDataResolver:
+    """Resolve geometry for the tool active in one channel state."""
+
+    @staticmethod
+    def active_tool_id(state) -> object:
+        tool_id = state.extra.get("active_tool_number")
+        if tool_id is None:
+            tool_id = state.extra.get("active_tool_name")
+        return tool_id
+
+    def resolve(self, state) -> ActiveToolGeometry:
+        tool_id = self.active_tool_id(state)
+        tool_values = state.extra.get("tool_compensation_data", {})
+        values = tool_values.get(tool_id, {}) if tool_id is not None else {}
+        return ActiveToolGeometry(
+            tool_id=tool_id,
+            radius=self._optional_float(values.get("rValue")),
+            tip_orientation=self._optional_int(values.get("qValue")),
+            length=self._optional_float(values.get("lengthValue")),
+            edge_number=self._optional_int(values.get("edgeNumber")),
+        )
+
+    @staticmethod
+    def _optional_float(value: object) -> Optional[float]:
+        if value is None:
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _optional_int(value: object) -> Optional[int]:
+        if value is None:
+            return None
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+
+
+class ToolPathCompensator:
+    """Offset generated polylines without changing interpolation code."""
+
+    _PLANE_AXES = {
+        "X_Y": ("x", "y"),
+        "X_Z": ("x", "z"),
+        "Y_Z": ("y", "z"),
+    }
+
+    def __init__(self) -> None:
+        self._previous_points: Optional[List[Point]] = None
+        self._previous_signature: Optional[Tuple[object, ...]] = None
+
+    def reset(self) -> None:
+        self._previous_points = None
+        self._previous_signature = None
+
+    def project(self, points: List[Point], state) -> List[Point]:
+        compensation = state.tool_compensation
+        if state.tool_path_mode != "center" or compensation.radius_mode == "OFF":
+            self.reset()
+            return points
+
+        radius = compensation.radius
+        if radius is None or radius <= 0.0 or len(points) < 2:
+            self.reset()
+            return points
+
+        plane = str(state.extra.get("g_group_16_plane", "X_Y"))
+        axes = self._PLANE_AXES.get(plane)
+        if axes is None:
+            self.reset()
+            return points
+
+        side = 1.0 if compensation.radius_mode == "LEFT" else -1.0
+        projected = self._offset_polyline(points, axes, radius * side)
+        signature = (
+            compensation.radius_mode,
+            radius,
+            plane,
+            ToolDataResolver.active_tool_id(state),
+        )
+        if self._previous_points is not None and self._previous_signature == signature:
+            self._join_paths(self._previous_points, projected, axes, radius)
+
+        self._previous_points = projected
+        self._previous_signature = signature
+        return projected
+
+    def _offset_polyline(
+        self,
+        points: List[Point],
+        axes: Tuple[str, str],
+        signed_radius: float,
+    ) -> List[Point]:
+        projected = [Point(**vars(point)) for point in points]
+        tangents: List[Optional[Tuple[float, float]]] = []
+        for start, end in zip(points, points[1:]):
+            du = getattr(end, axes[0]) - getattr(start, axes[0])
+            dv = getattr(end, axes[1]) - getattr(start, axes[1])
+            length = math.hypot(du, dv)
+            tangents.append(None if length <= 1e-12 else (du / length, dv / length))
+
+        for index, point in enumerate(projected):
+            before = self._nearest_tangent(tangents, index - 1, -1)
+            after = self._nearest_tangent(tangents, index, 1)
+            tangent = after or before
+            if tangent is None:
+                continue
+
+            if before is not None and after is not None:
+                normal = self._miter_normal(before, after, signed_radius)
+            else:
+                normal = (-tangent[1] * signed_radius, tangent[0] * signed_radius)
+            setattr(point, axes[0], getattr(point, axes[0]) + normal[0])
+            setattr(point, axes[1], getattr(point, axes[1]) + normal[1])
+        return projected
+
+    @staticmethod
+    def _nearest_tangent(
+        tangents: List[Optional[Tuple[float, float]]],
+        index: int,
+        direction: int,
+    ) -> Optional[Tuple[float, float]]:
+        while 0 <= index < len(tangents):
+            if tangents[index] is not None:
+                return tangents[index]
+            index += direction
+        return None
+
+    @staticmethod
+    def _miter_normal(
+        before: Tuple[float, float],
+        after: Tuple[float, float],
+        signed_radius: float,
+    ) -> Tuple[float, float]:
+        first = (-before[1], before[0])
+        second = (-after[1], after[0])
+        sum_u = first[0] + second[0]
+        sum_v = first[1] + second[1]
+        length = math.hypot(sum_u, sum_v)
+        if length <= 1e-12:
+            return first[0] * signed_radius, first[1] * signed_radius
+        miter = (sum_u / length, sum_v / length)
+        denominator = miter[0] * second[0] + miter[1] * second[1]
+        if abs(denominator) <= 1e-9:
+            return first[0] * signed_radius, first[1] * signed_radius
+        scale = signed_radius / denominator
+        limit = abs(signed_radius) * 10.0
+        scale = max(-limit, min(limit, scale))
+        return miter[0] * scale, miter[1] * scale
+
+    def _join_paths(
+        self,
+        previous: List[Point],
+        current: List[Point],
+        axes: Tuple[str, str],
+        radius: float,
+    ) -> None:
+        if len(previous) < 2 or len(current) < 2:
+            return
+        intersection = self._line_intersection(previous[-2], previous[-1], current[0], current[1], axes)
+        if intersection is None:
+            return
+        corner_distance = math.hypot(
+            intersection[0] - getattr(previous[-1], axes[0]),
+            intersection[1] - getattr(previous[-1], axes[1]),
+        )
+        if corner_distance > radius * 10.0:
+            return
+        setattr(previous[-1], axes[0], intersection[0])
+        setattr(previous[-1], axes[1], intersection[1])
+        setattr(current[0], axes[0], intersection[0])
+        setattr(current[0], axes[1], intersection[1])
+
+    @staticmethod
+    def _line_intersection(
+        first_start: Point,
+        first_end: Point,
+        second_start: Point,
+        second_end: Point,
+        axes: Tuple[str, str],
+    ) -> Optional[Tuple[float, float]]:
+        x1, y1 = getattr(first_start, axes[0]), getattr(first_start, axes[1])
+        x2, y2 = getattr(first_end, axes[0]), getattr(first_end, axes[1])
+        x3, y3 = getattr(second_start, axes[0]), getattr(second_start, axes[1])
+        x4, y4 = getattr(second_end, axes[0]), getattr(second_end, axes[1])
+        denominator = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
+        if abs(denominator) <= 1e-12:
+            return None
+        determinant_1 = x1 * y2 - y1 * x2
+        determinant_2 = x3 * y4 - y3 * x4
+        return (
+            (determinant_1 * (x3 - x4) - (x1 - x2) * determinant_2) / denominator,
+            (determinant_1 * (y3 - y4) - (y1 - y2) * determinant_2) / denominator,
+        )
+
+
+__all__ = [
+    "ActiveToolGeometry",
+    "ToolCompensationState",
+    "ToolDataResolver",
+    "ToolPathCompensator",
+]

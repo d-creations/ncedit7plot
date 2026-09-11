@@ -151,7 +151,8 @@ def build_segments_from_engine_output(canal_output: Dict[str, Any]) -> Dict[str,
             "traversal": traversal,
             "sourceCode": source_code,
             "lineNumber": entry.get("lineNumber") if entry.get("lineNumber") is not None else (executed_node_lines[idx] if idx < len(executed_node_lines) else None),
-            "toolNumber": 1,
+            "executionStep": entry.get("executionStep"),
+            "toolNumber": entry.get("toolNumber", "unknown"),
             "points": points,
         }
         segments.append(seg)
@@ -216,7 +217,8 @@ def mock_parse_nc_program(program: str, machine_name: str) -> Dict[str, Any]:
                 "traversal": "RAPID" if line.startswith('G0') else "FEED",
                 "sourceCode": "G0" if line.startswith('G0') else "G1",
                 "lineNumber": i + 1,
-                "toolNumber": 1,
+                "executionStep": i,
+                "toolNumber": "unknown",
                 "points": [
                     current_pos.copy(),
                     new_pos.copy()
@@ -421,7 +423,7 @@ def handle_execute_programs(
                     except (ValueError, TypeError):
                         logging.warning(f"Invalid custom variable value: {var_name}={var_value}")
             
-            # Store tool Q/R values in state extra for later use by tool compensation handlers
+            # Store tool compensation values for later use by compensation handlers
             tool_vals = tool_values_list[idx] if idx < len(tool_values_list) else []
             tool_data = {}
             for tv in tool_vals:
@@ -432,10 +434,15 @@ def handle_execute_programs(
                     except ValueError:
                         key = str(t_num)
 
-                    tool_data[key] = {
+                    values = {
                         "qValue": tv.get("qValue"),  # Quadrant Q1-Q9
                         "rValue": tv.get("rValue"),  # Tool radius R
                     }
+                    if "lengthValue" in tv:
+                        values["lengthValue"] = tv.get("lengthValue")
+                    if "edgeNumber" in tv:
+                        values["edgeNumber"] = tv.get("edgeNumber")
+                    tool_data[key] = values
             state.extra["tool_compensation_data"] = tool_data
             init_states.append(state)
         else:

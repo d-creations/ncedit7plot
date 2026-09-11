@@ -44,6 +44,7 @@
       "fanuc_mill_feed_mode",
       "fanuc_mill_speed_mode",
       "fanuc_mill_plane",
+      "fanuc_cutter_comp",
       "cycle_end",
       "motion"
     ],

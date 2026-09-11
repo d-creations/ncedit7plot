@@ -53,12 +53,18 @@ class TestCgiServerConversion(unittest.TestCase):
                         "z": [0.0, 0.0],
                         "t": 2.5,
                         "lineNumber": 10,
+                        "executionStep": 5,
+                        "toolNumber": 2,
                     }
                 ],
             }
         )
 
         self.assertEqual(result["segments"][0]["lineNumber"], 10)
+        self.assertEqual(result["segments"][0]["executionStep"], 5)
+        self.assertEqual(result["segments"][0]["toolNumber"], 2)
+        self.assertNotIn("toolState", result["segments"][0])
+        self.assertNotIn("sourceProgramId", result["segments"][0])
         self.assertEqual(result["executedLines"], [10])
         self.assertEqual(result["executedNodeLines"], [1, 2, 10])
         self.assertEqual(result["variables"], {"1": 4.7})
@@ -170,6 +176,15 @@ class TestCgiServerConversion(unittest.TestCase):
                         "program": "G1 X1",
                         "machineName": "FANUC_MILL",
                         "canalNr": "1",
+                        "toolValues": [
+                            {
+                                "toolNumber": 1,
+                                "qValue": 3,
+                                "rValue": 0.4,
+                                "lengthValue": 120.5,
+                                "edgeNumber": 2,
+                            }
+                        ],
                     }
                 ],
                 tool_path_mode="center",
@@ -177,6 +192,15 @@ class TestCgiServerConversion(unittest.TestCase):
 
         self.assertTrue(result["success"])
         self.assertEqual(captured["state"].tool_path_mode, "center")
+        self.assertEqual(
+            captured["state"].extra["tool_compensation_data"][1],
+            {
+                "qValue": 3,
+                "rValue": 0.4,
+                "lengthValue": 120.5,
+                "edgeNumber": 2,
+            },
+        )
 
     def test_execute_program_rejects_unknown_tool_path_mode(self):
         cgiserver = _load_cgiserver_module()

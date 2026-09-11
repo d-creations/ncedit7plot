@@ -20,16 +20,18 @@ Two accepted shapes:
   ]
 }
 
-The optional top-level `toolPathMode` configures which coordinates the motion
-handler should generate:
+The optional top-level `toolPathMode` selects which coordinates the output
+pipeline returns:
 
 - `effective` (default): effective/programmed contour.
 - `center`: tool-center path.
 
-The value is stored in each channel's `CNCState` for the motion handler. Both
-modes currently return the same coordinates; the distinction is reserved for
-the later G41/G42 cutter-radius interpolation. An unknown value returns
-`success: false`.
+The value is stored independently in each channel's `CNCState`. In `center`
+mode, FANUC mill and Siemens ISO `G41/G42` paths are offset by the active
+tool's `rValue`; `G40` cancels the offset. The current implementation uses the
+generated polyline, so arcs are compensated at their configured tessellation
+resolution. Turning tool-nose compensation and dynamic TCP modes are not yet
+implemented. An unknown mode returns `success: false`.
 
 2) Direct list of machine-data objects:
 
@@ -39,6 +41,17 @@ the later G41/G42 cutter-radius interpolation. An unknown value returns
 ]
 
 Each machine-data entry must include `program`, `machineName`, and `canalNr`. An optional `customMachineConfig` dictionary can be included to override the machine configuration (Bring Your Own Config - BYOC).
+
+An entry may include `toolValues`. Each item requires `toolNumber` and accepts
+optional compensation values:
+
+- `qValue`: tool-tip orientation/quadrant.
+- `rValue`: cutter or tool-nose radius.
+- `lengthValue`: tool length reserved for length/TCP compensation.
+- `edgeNumber`: cutting-edge/offset identifier reserved for later lookup.
+
+The CGI stores supplied values in that channel's `CNCState`. `lengthValue` and
+`edgeNumber` are preserved but do not yet change generated geometry.
 
 ## Allowed machine names
 These are defined dynamically in `ncplot7py/config/machines.json`. Common defaults include:
@@ -103,7 +116,8 @@ Each item in a canal's `segments` list includes motion semantics separately from
   "traversal": "RAPID",
   "sourceCode": "G00",
   "lineNumber": 10,
-  "toolNumber": 1,
+  "executionStep": 5,
+  "toolNumber": 2,
   "points": [{"x": 0.0, "y": 0.0, "z": 0.0}]
 }
 ```
@@ -111,6 +125,8 @@ Each item in a canal's `segments` list includes motion semantics separately from
 - `geometry` is `LINEAR`, `ARC_CW`, or `ARC_CCW` when known.
 - `traversal` is `RAPID` or `FEED` when known.
 - `sourceCode` is the effective modal interpolation code (`G00`, `G01`, `G02`, or `G03`) when known.
+- `executionStep` is the zero-based executed-command occurrence in its channel. Generated cycle segments from the same command share one step.
+- `toolNumber` is the active numeric tool, named-tool string, or `"unknown"` when no active tool can be determined.
 - `type` remains the compatibility display value: `RAPID` for rapid traversal, otherwise the geometry value. It is `UNKNOWN` when the engine marks a generated path as having no single motion classification.
 - The semantic fields can be `null` for legacy engine output or compound generated paths that do not have one motion classification.
 - Implemented FANUC turning drilling cycles (`G83`, `G84`, `G85`, `G87`, and `G89`) are expanded into separate primitive segments. Every approach/retract segment has `geometry: "LINEAR"`, `traversal: "RAPID"`, and `sourceCode: "G00"`; every cutting/tapping/boring segment has `geometry: "LINEAR"`, `traversal: "FEED"`, and `sourceCode: "G01"`.

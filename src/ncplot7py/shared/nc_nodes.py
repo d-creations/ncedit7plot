@@ -42,6 +42,8 @@ class NCCommandNode(BaseNCCommandNode):
         self._motion_traversal: Optional[str] = None
         self._motion_source_code: Optional[str] = None
         self._generated_motion_segments: List[Dict[str, object]] = []
+        self._execution_step: Optional[int] = None
+        self._tool_number: Optional[object] = None
 
         # Optional pointers for linked-list style containers
         self._next_ncCode: Optional["NCCommandNode"] = None
@@ -88,6 +90,14 @@ class NCCommandNode(BaseNCCommandNode):
     def generated_motion_segments(self) -> List[Dict[str, object]]:
         return self._generated_motion_segments
 
+    @property
+    def execution_step(self) -> Optional[int]:
+        return self._execution_step
+
+    @property
+    def tool_number(self) -> Optional[object]:
+        return self._tool_number
+
     def set_motion_metadata(self, geometry: str, traversal: str, source_code: str) -> None:
         self._motion_geometry = geometry
         self._motion_traversal = traversal
@@ -95,6 +105,14 @@ class NCCommandNode(BaseNCCommandNode):
 
     def set_generated_motion_segments(self, segments: List[Dict[str, object]]) -> None:
         self._generated_motion_segments = list(segments)
+
+    def set_execution_metadata(
+        self,
+        execution_step: int,
+        tool_number: Optional[object],
+    ) -> None:
+        self._execution_step = execution_step
+        self._tool_number = tool_number
 
     def __str__(self) -> str:
         parts = ["NC COMMAND: "]
@@ -129,6 +147,8 @@ class NCCommandNode(BaseNCCommandNode):
         node._motion_traversal = self._motion_traversal
         node._motion_source_code = self._motion_source_code
         node._generated_motion_segments = deepcopy(self._generated_motion_segments)
+        node._execution_step = self._execution_step
+        node._tool_number = self._tool_number
         return node
 
     def __del__(self) -> None:

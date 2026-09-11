@@ -14,10 +14,12 @@ class BaseToolHandler:
     """Provide common tool validation and compensation loading."""
 
     def _handle_tool_change(self, node: NCCommandNode, state: CNCState) -> None:
-        if "T" not in node.command_parameter:
-            return
+        if "T" in node.command_parameter:
+            self._activate_tool(node, state)
 
+    def _activate_tool(self, node: NCCommandNode, state: CNCState) -> None:
         t_str = node.command_parameter["T"]
+
         try:
             t_val = int(float(t_str))
             tool_number = t_val
@@ -44,13 +46,42 @@ class BaseToolHandler:
                         line=getattr(node, "nc_code_line_nr", 0) or 0,
                     )
 
+            if tool_number == 0:
+                self._clear_active_tool(state)
+                return
+
+            state.extra["active_tool_number"] = tool_number
             state.extra["current_tool_number"] = tool_number
+            state.extra["active_tool_code"] = t_val
             state.extra["current_tool_code"] = t_val
+            state.extra.pop("active_tool_name", None)
+            state.extra.pop("current_tool_name", None)
             self._load_tool_compensation(tool_number, t_val, state)
         except ValueError:
-            t_name = t_str.replace('"', "").replace("'", "")
+            t_name = str(t_str).replace('"', "").replace("'", "")
+            if t_name in {"", "0"}:
+                self._clear_active_tool(state)
+                return
+
+            state.extra["active_tool_name"] = t_name
             state.extra["current_tool_name"] = t_name
+            state.extra.pop("active_tool_number", None)
+            state.extra.pop("active_tool_code", None)
+            state.extra.pop("current_tool_number", None)
+            state.extra.pop("current_tool_code", None)
             self._load_tool_compensation(t_name, t_name, state)
+
+    @staticmethod
+    def _clear_active_tool(state: CNCState) -> None:
+        for key in (
+            "active_tool_number",
+            "active_tool_name",
+            "active_tool_code",
+            "current_tool_number",
+            "current_tool_name",
+            "current_tool_code",
+        ):
+            state.extra.pop(key, None)
 
     def _load_tool_compensation(
         self, tool_key: int | str, display_tool: int | str, state: CNCState
