@@ -64,6 +64,7 @@ class CNCState:
     spindle_speed: Optional[Numeric] = None
     tool_radius: Optional[Numeric] = None
     tool_quadrant: Optional[int] = None
+    tool_path_mode: str = "effective"
 
     # Program parameters / variables (#500 style) and DDDP table if present
     parameters: Dict[str, Numeric] = field(default_factory=dict)

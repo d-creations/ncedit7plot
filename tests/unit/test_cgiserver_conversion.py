@@ -4,6 +4,7 @@ import io
 import pathlib
 import sys
 import unittest
+from unittest.mock import patch
 
 
 _REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -149,6 +150,41 @@ class TestCgiServerConversion(unittest.TestCase):
             ],
         )
         self.assertEqual([segment["type"] for segment in segments], ["RAPID", "RAPID", "LINEAR", "ARC_CW", "ARC_CCW"])
+
+    def test_execute_program_accepts_center_tool_path_mode(self):
+        cgiserver = _load_cgiserver_module()
+        captured = {}
+
+        class CapturingEngine:
+            def __init__(self, control):
+                captured["state"] = control.get_nc_state(1)
+                self.errors = []
+
+            def get_Syncro_plot(self, programs, synch):
+                return [{"plot": [], "programExec": [1]}]
+
+        with patch.object(cgiserver, "NCExecutionEngine", CapturingEngine):
+            result = cgiserver.handle_execute_programs(
+                [
+                    {
+                        "program": "G1 X1",
+                        "machineName": "FANUC_MILL",
+                        "canalNr": "1",
+                    }
+                ],
+                tool_path_mode="center",
+            )
+
+        self.assertTrue(result["success"])
+        self.assertEqual(captured["state"].tool_path_mode, "center")
+
+    def test_execute_program_rejects_unknown_tool_path_mode(self):
+        cgiserver = _load_cgiserver_module()
+
+        result = cgiserver.handle_execute_programs([], tool_path_mode="outside")
+
+        self.assertFalse(result["success"])
+        self.assertIn("Invalid toolPathMode", result["message"][0])
 
     def test_variable_only_siemens_program_does_not_fall_back_to_mock(self):
         cgiserver = _load_cgiserver_module()

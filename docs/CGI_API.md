@@ -13,11 +13,23 @@ Two accepted shapes:
 1) Object with `machinedata` list:
 
 {
+  "toolPathMode": "effective",
   "machinedata": [
     { "program": "<nc-program>", "machineName": "<machine>", "canalNr": <number-or-string> },
     ...
   ]
 }
+
+The optional top-level `toolPathMode` configures which coordinates the motion
+handler should generate:
+
+- `effective` (default): effective/programmed contour.
+- `center`: tool-center path.
+
+The value is stored in each channel's `CNCState` for the motion handler. Both
+modes currently return the same coordinates; the distinction is reserved for
+the later G41/G42 cutter-radius interpolation. An unknown value returns
+`success: false`.
 
 2) Direct list of machine-data objects:
 

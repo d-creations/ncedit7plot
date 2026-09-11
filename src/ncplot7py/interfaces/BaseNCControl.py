@@ -1,8 +1,6 @@
 from __future__ import annotations
 from abc import ABC, abstractmethod
 
-
-
 class NCCanal(ABC):
     """
     Header Class of the NCControl interface to use an NC Control.

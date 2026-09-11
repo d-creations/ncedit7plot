@@ -327,7 +327,20 @@ def handle_get_line_alignment_syntax() -> Dict[str, Any]:
         "success": True,
     }
 
-def handle_execute_programs(machinedata: List[Dict[str, Any]]) -> Dict[str, Any]:
+def handle_execute_programs(
+    machinedata: List[Dict[str, Any]],
+    tool_path_mode: str = "effective",
+) -> Dict[str, Any]:
+    tool_path_mode = str(tool_path_mode).strip().lower()
+    if tool_path_mode not in {"effective", "center"}:
+        return {
+            "canal": {},
+            "message": [
+                f"Invalid toolPathMode '{tool_path_mode}'. Expected one of: effective, center"
+            ],
+            "success": False,
+        }
+
     if NCExecutionEngine is None:
         return run_mock_parser(machinedata)
 
@@ -393,7 +406,10 @@ def handle_execute_programs(machinedata: List[Dict[str, Any]]) -> Dict[str, Any]
     for idx in range(len(programs)):
         if CNCState is not None:
             config = custom_configs[idx] if idx < len(custom_configs) and custom_configs[idx] is not None else get_machine_config(machine_names[idx])
-            state = CNCState(machine_config=config)
+            state = CNCState(
+                machine_config=config,
+                tool_path_mode=tool_path_mode,
+            )
             # Set custom variables into state parameters
             custom_vars = custom_variables_list[idx] if idx < len(custom_variables_list) else []
             for var in custom_vars:
@@ -542,7 +558,10 @@ def main():
         
         elif "machinedata" in request_data:
             programs = request_data["machinedata"]
-            response = handle_execute_programs(programs)
+            response = handle_execute_programs(
+                programs,
+                request_data.get("toolPathMode", "effective"),
+            )
         
         elif isinstance(request_data, list):
             response = handle_execute_programs(request_data)
