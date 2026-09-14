@@ -1002,5 +1002,189 @@
       ],
       "channels": {}
     }
+  },
+  "FANUC_MILL_DEMO": {
+    "name": "FANUC_MILL_DEMO",
+    "control_type": "FANUC",
+    "parser_name": "fanuc",
+    "lexer_name": "fanuc",
+    "machine_type": "MILL",
+    "channels": 1,
+    "axes": ["X", "Y", "Z", "B", "C"],
+    "variable_pattern": "#(\\d+)",
+    "variable_prefix": "#",
+    "tool_range": [0, 9999],
+    "tool_selection": {"mode": "direct", "named_tools": false, "offset_address": "D", "offset_scope": "global"},
+    "supported_gcode_groups": ["fanuc_alarm", "variable", "control_flow", "fanuc_tool_handler", "fanuc_precheck", "fanuc_mill_groups", "modal", "fanuc_mill_mcode_modal", "group_0_coordinate_set", "fanuc_mill_work_offset", "fanuc_mill_feed_mode", "fanuc_mill_speed_mode", "fanuc_mill_plane", "fanuc_cutter_comp", "cycle_end", "motion"],
+    "default_plane": "G17",
+    "default_feed_mode": "FEED_PER_MIN",
+    "rapid_feed_rate": 20000.0,
+    "simulation": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "modelId": "MILL_DEMO",
+      "displayName": "MILL DEMO",
+      "fidelity": "demo",
+      "poseContract": "workpiece-tool-reference-v1",
+      "carriers": [
+        {"id": "millingSpindle", "role": "tool", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": []},
+        {"id": "tableBC", "role": "workpiece", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": [{"axisId": "B", "axis": [0, 1, 0], "sign": 1, "zeroDegrees": 0}, {"axisId": "C", "axis": [0, 0, 1], "sign": 1, "zeroDegrees": 0}]}
+      ],
+      "toolMounts": [{"channelId": "1", "tools": {"kind": "numericRange", "from": 1, "to": 99}, "carrierId": "millingSpindle", "target": {"mode": "fixed", "workpieceCarrierId": "tableBC"}}],
+      "initialAxes": {"B": 0, "C": 0}
+    }
+  },
+  "SIEMENS_MILL_DEMO": {
+    "name": "SIEMENS_MILL_DEMO",
+    "control_type": "SIEMENS",
+    "parser_name": "siemens",
+    "lexer_name": "siemens",
+    "machine_type": "MILL",
+    "channels": 1,
+    "axes": ["X", "Y", "Z", "B", "C"],
+    "variable_pattern": "R(\\d+)",
+    "variable_prefix": "R",
+    "tool_range": [0, 9999],
+    "tool_selection": {"mode": "direct", "named_tools": true, "offset_address": "D", "offset_scope": "tool"},
+    "supported_gcode_groups": ["siemens_alarm", "siemens_variables", "siemens_flow_control", "siemens_builtins", "siemens_frames", "siemens_transformations", "siemens_path_mode", "siemens_mode", "siemens_named_cycles", "siemens_iso_cycles", "siemens_iso_feed", "siemens_iso_speed", "siemens_iso_plane", "siemens_iso_polar", "siemens_tool_handler", "siemens_iso_tool_length", "siemens_iso_cutter_comp", "siemens_iso_coordinate", "siemens_iso_inch_metric", "siemens_iso_misc", "modal", "siemens_mill_mcode_modal", "cycle_end", "siemens_motion", "motion"],
+    "default_plane": "G17",
+    "default_feed_mode": "FEED_PER_MIN",
+    "rapid_feed_rate": 20000.0,
+    "simulation": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "modelId": "MILL_DEMO",
+      "displayName": "MILL DEMO",
+      "fidelity": "demo",
+      "poseContract": "workpiece-tool-reference-v1",
+      "carriers": [
+        {"id": "millingSpindle", "role": "tool", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": []},
+        {"id": "tableBC", "role": "workpiece", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": [{"axisId": "B", "axis": [0, 1, 0], "sign": 1, "zeroDegrees": 0}, {"axisId": "C", "axis": [0, 0, 1], "sign": 1, "zeroDegrees": 0}]}
+      ],
+      "toolMounts": [{"channelId": "1", "tools": {"kind": "numericRange", "from": 1, "to": 99}, "carrierId": "millingSpindle", "target": {"mode": "fixed", "workpieceCarrierId": "tableBC"}}],
+      "initialAxes": {"B": 0, "C": 0}
+    }
+  },
+  "FANUC_STAR_SR20R_IV_B": {
+    "name": "FANUC_STAR_SR20R_IV_B",
+    "control_type": "FANUC",
+    "parser_name": "fanuc",
+    "lexer_name": "fanuc",
+    "machine_type": "TURN_MILL",
+    "channels": 2,
+    "axes": ["X1", "Y1", "Z1", "B1", "C1", "X2", "Y2", "Z2", "C2"],
+    "variable_pattern": "#(\\d+)",
+    "variable_prefix": "#",
+    "tool_range": [0, 9999],
+    "tool_selection": {"mode": "station", "offset_digits": 2, "named_tools": false, "offset_scope": "global", "subtool_codes": [3411, 3412, 3421, 3422, 3423, 3511, 3512, 3521, 3522, 3523]},
+    "synchronization_strategy": "STAR_WAIT",
+    "supported_gcode_groups": ["fanuc_alarm", "variable", "control_flow", "star_fanuc_tool_handler", "precheck", "fanuc_turn_spindle_limit", "fanuc_turn_units", "modal", "star_mcode_modal", "group_0_coordinate_set", "group_2_speed_mode", "star_spindle_fluctuation", "group_5_feed_mode", "group_16_plane", "fanuc_coordinate_rotation", "group_21_polar", "fanuc_cutter_comp", "cornering", "wait_code", "spindle_speed", "cycle_end", "star_automatic_coordinate", "star_g266", "star_b1_tilting", "star_g161_step_cycle", "fanuc_g92_threading", "fanuc_g76_threading", "fanuc_g36_circular_threading", "fanuc_turn_drilling_cycles", "motion"],
+    "default_plane": "G18",
+    "default_feed_mode": "FEED_PER_REV",
+    "rapid_feed_rate": 20000.0,
+    "diameter_axes": ["X1", "Y1", "X2", "Y2"],
+    "g96_reference_axis": "X1",
+    "circular_threading_enabled": true,
+    "step_cycle_pro_enabled": true,
+    "simulation": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "modelId": "STAR_SR20R_IV_B",
+      "displayName": "STAR SR-20R IV Type B",
+      "fidelity": "configured",
+      "poseContract": "workpiece-tool-reference-v1",
+      "carriers": [
+        {"id": "gangToolPost", "role": "tool", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": []},
+        {"id": "tiltingToolUnit", "role": "tool", "referenceOrientationDegrees": [0, 90, 0], "rotationChain": [{"axisId": "B1", "axis": [0, 1, 0], "sign": 1, "zeroDegrees": 90}]},
+        {"id": "backToolUnit", "role": "tool", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": []},
+        {"id": "mainSpindle", "role": "workpiece", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": [{"axisId": "C1", "axis": [0, 0, 1], "sign": 1, "zeroDegrees": 0}]},
+        {"id": "subSpindle", "role": "workpiece", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": [{"axisId": "C2", "axis": [0, 0, 1], "sign": 1, "zeroDegrees": 0}]}
+      ],
+      "toolMounts": [
+        {"channelId": "1", "tools": {"kind": "identifiers", "values": [1, 2, 3, 4, 5, 7, 8, 9, 11, 12, 13, 14, 15, 16]}, "carrierId": "gangToolPost", "target": {"mode": "fixed", "workpieceCarrierId": "mainSpindle"}},
+        {"channelId": "1", "tools": {"kind": "numericRange", "from": 17, "to": 19}, "carrierId": "tiltingToolUnit", "target": {"mode": "fixed", "workpieceCarrierId": "mainSpindle"}},
+        {"channelId": "2", "tools": {"kind": "numericRange", "from": 21, "to": 28}, "carrierId": "backToolUnit", "target": {"mode": "fixed", "workpieceCarrierId": "subSpindle"}}
+      ]
+    }
+  },
+  "FANUC_STAR_SV20R": {
+    "name": "FANUC_STAR_SV20R",
+    "control_type": "FANUC",
+    "parser_name": "fanuc",
+    "lexer_name": "fanuc",
+    "machine_type": "TURN_MILL",
+    "channels": 3,
+    "axes": ["X1", "Y1", "Z1", "C1", "X2", "Y2", "Z2", "C2", "X3", "Y3", "Z3"],
+    "variable_pattern": "#(\\d+)",
+    "variable_prefix": "#",
+    "tool_range": [0, 9999],
+    "tool_selection": {"mode": "station", "offset_digits": 2, "named_tools": false, "offset_scope": "global", "subtool_codes": [3411, 3412, 3421, 3422, 3423, 3511, 3512, 3521, 3522, 3523]},
+    "synchronization_strategy": "STAR_WAIT",
+    "supported_gcode_groups": ["fanuc_alarm", "variable", "control_flow", "star_fanuc_tool_handler", "precheck", "fanuc_turn_spindle_limit", "fanuc_turn_units", "modal", "star_mcode_modal", "group_0_coordinate_set", "group_2_speed_mode", "star_spindle_fluctuation", "group_5_feed_mode", "group_16_plane", "fanuc_coordinate_rotation", "group_21_polar", "fanuc_cutter_comp", "cornering", "wait_code", "spindle_speed", "cycle_end", "star_automatic_coordinate", "star_g266", "star_g161_step_cycle", "fanuc_g92_threading", "fanuc_g76_threading", "fanuc_g36_circular_threading", "fanuc_turn_drilling_cycles", "motion"],
+    "default_plane": "G18",
+    "default_feed_mode": "FEED_PER_REV",
+    "rapid_feed_rate": 20000.0,
+    "diameter_axes": ["X1", "Y1", "X2", "Y2", "X3", "Y3"],
+    "g96_reference_axis": "X1",
+    "circular_threading_enabled": true,
+    "step_cycle_pro_enabled": true,
+    "simulation": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "modelId": "STAR_SV20R",
+      "displayName": "STAR SV-20R",
+      "fidelity": "configured",
+      "poseContract": "workpiece-tool-reference-v1",
+      "carriers": [
+        {"id": "gangToolPost", "role": "tool", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": []},
+        {"id": "backToolUnit", "role": "tool", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": []},
+        {"id": "turret", "role": "tool", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": []},
+        {"id": "mainSpindle", "role": "workpiece", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": [{"axisId": "C1", "axis": [0, 0, 1], "sign": 1, "zeroDegrees": 0}]},
+        {"id": "subSpindle", "role": "workpiece", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": [{"axisId": "C2", "axis": [0, 0, 1], "sign": 1, "zeroDegrees": 0}]}
+      ],
+      "toolMounts": [
+        {"channelId": "1", "tools": {"kind": "identifiers", "values": [1, 2, 3, 4, 5, 6, 7, 11, 12, 13, 14, 15]}, "carrierId": "gangToolPost", "target": {"mode": "fixed", "workpieceCarrierId": "mainSpindle"}},
+        {"channelId": "2", "tools": {"kind": "numericRange", "from": 21, "to": 28}, "carrierId": "backToolUnit", "target": {"mode": "fixed", "workpieceCarrierId": "subSpindle"}},
+        {"channelId": "3", "tools": {"kind": "numericRange", "from": 31, "to": 38}, "carrierId": "turret", "target": {"mode": "execution", "allowedWorkpieceCarrierIds": ["mainSpindle", "subSpindle"]}}
+      ]
+    }
+  },
+  "FANUC_STAR_SG42": {
+    "name": "FANUC_STAR_SG42",
+    "control_type": "FANUC",
+    "parser_name": "fanuc",
+    "lexer_name": "fanuc",
+    "machine_type": "TURN",
+    "channels": 2,
+    "axes": ["X", "Y", "Z", "ZB", "C1", "C2"],
+    "variable_pattern": "#(\\d+)",
+    "variable_prefix": "#",
+    "tool_range": [0, 9999],
+    "tool_selection": {"mode": "station", "offset_digits": 2, "named_tools": false, "offset_scope": "global"},
+    "synchronization_strategy": "STAR_WAIT",
+    "supported_gcode_groups": ["fanuc_alarm", "variable", "control_flow", "star_fanuc_tool_handler", "precheck", "fanuc_turn_spindle_limit", "fanuc_turn_units", "modal", "star_mcode_modal", "group_0_coordinate_set", "group_2_speed_mode", "star_spindle_fluctuation", "group_5_feed_mode", "group_16_plane", "fanuc_coordinate_rotation", "fanuc_cutter_comp", "cornering", "wait_code", "spindle_speed", "cycle_end", "star_automatic_coordinate", "star_g266", "fanuc_g92_threading", "fanuc_g76_threading", "fanuc_g36_circular_threading", "fanuc_turn_drilling_cycles", "motion"],
+    "default_plane": "G18",
+    "default_feed_mode": "FEED_PER_REV",
+    "rapid_feed_rate": 20000.0,
+    "diameter_axes": ["X"],
+    "g96_reference_axis": "X",
+    "circular_threading_enabled": true,
+    "simulation": {
+      "schemaVersion": 1,
+      "revision": 1,
+      "modelId": "STAR_SG42",
+      "displayName": "STAR SG-42",
+      "fidelity": "configured",
+      "poseContract": "workpiece-tool-reference-v1",
+      "carriers": [
+        {"id": "sharedTurret", "role": "tool", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": []},
+        {"id": "mainSpindle", "role": "workpiece", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": [{"axisId": "C1", "axis": [0, 0, 1], "sign": 1, "zeroDegrees": 0}]},
+        {"id": "subSpindle", "role": "workpiece", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": [{"axisId": "C2", "axis": [0, 0, 1], "sign": 1, "zeroDegrees": 0}]}
+      ],
+      "toolMounts": [
+        {"channelId": "1", "tools": {"kind": "numericRange", "from": 1, "to": 10}, "carrierId": "sharedTurret", "target": {"mode": "execution", "allowedWorkpieceCarrierIds": ["mainSpindle", "subSpindle"]}},
+        {"channelId": "2", "tools": {"kind": "numericRange", "from": 1, "to": 10}, "carrierId": "sharedTurret", "target": {"mode": "execution", "allowedWorkpieceCarrierIds": ["mainSpindle", "subSpindle"]}}
+      ]
+    }
   }
 }

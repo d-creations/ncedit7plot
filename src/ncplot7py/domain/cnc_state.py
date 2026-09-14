@@ -107,6 +107,11 @@ class CNCState:
         for axis in getattr(config, "diameter_axes", ()):
             self.set_axis_unit(axis, "diameter")
 
+        simulation = getattr(config, "simulation", None)
+        if isinstance(simulation, dict):
+            for axis, position in simulation.get("initialAxes", {}).items():
+                self.set_axis(axis, position)
+
     def clone(self) -> "CNCState":
         """Return a deep copy of the state for transactional updates."""
         return deepcopy(self)

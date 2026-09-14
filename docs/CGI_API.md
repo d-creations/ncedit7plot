@@ -2,9 +2,57 @@
 
 This document describes the CGI interface implemented by `scripts/cgiserver.cgi`.
 
+## Simulation negotiation and R0 (2026-09-14)
+
+One POST executes all selected channels together. Simulation configuration and
+request negotiation are implemented; workpiece tool-pose production is not.
+Discovery includes `axes`, `availableChannels`, `profileRevision`,
+`supportedPoseContracts`, and `simulation` when configured. The fingerprint
+covers all loaded execution/simulation fields. Undeclared axes are `[]`.
+
+Configuration `simulation` requires schemaVersion=1, revision, modelId,
+displayName, fidelity (demo/configured), poseContract, carriers and toolMounts.
+Carriers declare ID, role, referenceOrientationDegrees and rotationChain.
+Mounts declare channelId, numericRange/identifiers, tool carrier and fixed or
+execution-resolved target. Invalid references, transforms, unknown fields and
+overlapping selections reject the configuration load atomically.
+
+The pose-request shape is:
+
+```json
+{
+  "toolPathMode": "center",
+  "poseContract": "workpiece-tool-reference-v1",
+  "machinedata": [{
+    "machineName": "FANUC_MILL", "canalNr": "1", "program": "T1",
+    "toolValues": [{"toolNumber": 1, "rValue": 0}],
+    "simulation": {
+      "profileRevision": "copy-the-exact-discovery-value",
+      "tools": [{"toolNumber": 1, "reference": "millingTip", "mountingOrientationDegrees": [0, 0, 0]}]
+    }
+  }]
+}
+```
+
+This is a negotiation example, not enabled pose execution. Currently
+supportedPoseContracts is empty. Validated requests return
+POSE_CONTRACT_UNSUPPORTED before execution, not downgraded XYZ data. Stale
+revisions return PROFILE_REVISION_MISMATCH. Invalid pose data, unknown profiles
+and pose-mode customMachineConfig return SIMULATION_INPUT_INVALID. The error
+envelope is `{success:false, canal:{}, message:[...], errors:[{code,message,channelId?}]}`.
+Path-only requests omit poseContract and the per-entry simulation field.
+
+Explicit rValue=0 is valid in toolValues and positive-numbered toolOffsets.
+G41/G42 remain selected but generate zero radius displacement. Zero is not
+missing data or a fallback to a nonzero tool default. Negative/missing radius
+fails compensation activation. Register zero remains cancellation, not storage.
+
+Execution errors and unavailable engines return success=false, never mock or
+partial success. A valid empty plot succeeds. Success reports
+executionOrigin="engine". Clients must check success before consuming paths.
+
 ## Overview
 - The CGI script accepts a JSON POST and returns a JSON response.
-- The script logs the request into a MariaDB table (if DB credentials are configured).
 - The core processing runs the project's NC execution engine and returns syncro plot data.
 
 ## Request payload shapes
@@ -46,7 +94,7 @@ An entry may include `toolValues`. Each item requires `toolNumber` and accepts
 optional compensation values:
 
 - `qValue`: tool-tip orientation/quadrant.
-- `rValue`: cutter or tool-nose radius.
+- `rValue`: cutter or tool-nose radius, including explicit zero.
 - `lengthValue`: tool length reserved for length/TCP compensation.
 - `edgeNumber`: cutting-edge/offset identifier reserved for later lookup.
 
@@ -76,24 +124,20 @@ Instead of relying strictly on server-defined defaults, clients can dynamically 
 - Top-level must be an object containing `machinedata` or a list.
 - Each entry must have `program`, `machineName`, and `canalNr`.
 - `machineName` is highly recommended to be one of the known dynamic names to ensure proper default fallback logic, but can be a custom string if `customMachineConfig` is fully provided.
-- `program` must NOT contain any of these characters: `(`, `)`, `{`, `}` — payloads containing them are rejected.
+- Program syntax is interpreted by the selected parser; the old blanket parenthesis/brace rejection is not present in this script.
 
 ## Server-side preprocessing
-- The script removes substrings matching `\(.*\)` from the program (comments in parentheses).
-- Newlines are converted to semicolons: `\n` -> `;`.
-- Spaces are removed from the program string.
+- The sanitizer preserves line boundaries, normalizes token spacing and keeps the last duplicated numeric XYZ/IJK token in each semicolon-delimited part.
+- Parenthesis removal is disabled because Siemens uses parentheses in commands. The API does not strip all spaces or convert newlines into semicolons.
 
 ## Side effects / logging
-- The script attempts to insert a row into MariaDB `log.logNCR` with columns `IP` and `POST`.
-- IP is taken from `REMOTE_ADDR` environment variable (trimmed to 19 characters) or "NAN" if missing.
-- POST body is truncated when logged (approx 1000-1500 characters).
-- MariaDB credentials must be provided in the running environment or script.
+- Diagnostics go to stderr. The current script has no MariaDB request-logging operation.
 
 ## Processing flow
 - Builds initial `CNCState` instances per machine name.
-- Sets X axis unit to `diameter` for lathe-style machines (SB12 and SR20, FANUC_T).
-- Creates a `StatefulIsoTurnNCControl` with `count_of_canals`, `canal_names`, and initial `CNCState` list.
-- Instantiates `NCExecutionEngine(control)` and calls `engine.get_Syncro_plot(programs, True)`.
+- Loads tool/offset data into independent channel states; units follow configured execution handlers.
+- Creates a `UniversalConfigDrivenControl` with channel names and initial states.
+- Instantiates `NCExecutionEngine(control)` once and calls `engine.get_Syncro_plot(programs, False)`.
 
 ## Response format
 On success, a JSON object similar to:
@@ -189,15 +233,16 @@ Invoke-RestMethod -Uri 'https://your-server/cgi-bin/cgiserver.cgi' -Method Post 
 
 ```json
 {
-  "canal": [ /* engine-specific syncro plot structure */ ],
-  "message": [ /* diagnostic messages */ ]
+  "success": true,
+  "executionOrigin": "engine",
+  "canal": {"1": {"segments": []}},
+  "message": []
 }
 ```
 
 ## Notes / caveats
-- The script has two `request_precheck` blocks; the later one is authoritative for validation.
-- Ensure MariaDB credentials and connectivity are configured in the environment where the CGI runs.
-- Clients need not pre-normalize newlines or spaces; the server will remove spaces and convert newlines to semicolons, but clients must avoid forbidden characters.
+- Clients should send original program lines rather than applying obsolete CGI preprocessing rules.
+- API/config identifiers remain exact. The existing execution parser can turn quoted numeric Siemens tool names such as T="1" into numeric IDs; this separate issue is not fixed by the R0 update.
 
 ## Listing available machines (new)
 

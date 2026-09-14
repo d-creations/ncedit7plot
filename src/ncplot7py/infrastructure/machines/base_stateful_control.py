@@ -60,6 +60,29 @@ class BaseStatefulCanal(BaseNCCanalInterface):
             return self._tool_nodes
         return getattr(self, "_exec_sequence", self._nodes)
 
+    def _capture_motion_context(self, start_axes: Optional[Dict[str, float]] = None) -> Dict[str, object]:
+        """Detach state required by later kinematics from this exact motion."""
+        configured_axes = getattr(self._state.machine_config, "axes", ())
+        axes = {
+            axis: float(self._state.axes[axis])
+            for axis in configured_axes
+            if axis in self._state.axes
+        }
+        compensation = self._state.tool_compensation
+        tool_offset = {
+            "number": self._state.extra.get("active_offset_number"),
+            "radiusMode": compensation.radius_mode,
+            "radius": compensation.radius,
+            "tipOrientation": compensation.tip_orientation,
+            "edgeNumber": compensation.edge_number,
+        }
+        return {
+            "channelId": str(self._name),
+            "startAxes": dict(start_axes) if start_axes is not None else dict(axes),
+            "endAxes": axes,
+            "toolOffset": {key: value for key, value in tool_offset.items() if value is not None},
+        }
+
     def _get_handler(self, handler_type: Type) -> Optional[Any]:
         """Utility to retrieve a specific instance of a handler from the chain."""
         current = self._chain
@@ -109,6 +132,11 @@ class BaseStatefulCanal(BaseNCCanalInterface):
                 pass
 
             pts, dur = None, 0.0
+            start_axes = {
+                axis: float(self._state.axes[axis])
+                for axis in getattr(self._state.machine_config, "axes", ())
+                if axis in self._state.axes
+            }
             if self._chain is not None:
                 try:
                     pts, dur = self._chain.handle(node, self._state)
@@ -152,6 +180,7 @@ class BaseStatefulCanal(BaseNCCanalInterface):
                 motion_node.set_execution_metadata(
                     execution_step=steps,
                     tool_number=active_tool if active_tool is not None else "unknown",
+                    motion_context=self._capture_motion_context(start_axes),
                 )
                 generated_segments = getattr(node, "generated_motion_segments", [])
                 if generated_segments:

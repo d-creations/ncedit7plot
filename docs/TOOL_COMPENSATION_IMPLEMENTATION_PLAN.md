@@ -4,6 +4,21 @@ This plan separates control-specific command interpretation from shared
 toolpath geometry. The existing linear, circular, cycle, feed, and duration
 calculations remain the source of programmed motion.
 
+## Zero-radius API update (2026-09-14)
+
+Explicit `rValue: 0` now activates G41/G42 successfully and projects zero radius
+displacement. It is not missing data and does not cancel the selected mode;
+changing to a nonzero register while compensation stays active uses that radius.
+Missing or negative radius still fails activation. A zero-radius record never
+falls back to a nonzero tool default. Offset selector zero remains cancellation
+and is not a positive stored register.
+
+CGI and FastAPI now return errors instead of automatic mock/partial success and
+both honor toolPathMode in channel state. Simulation config validation and pose
+negotiation are implemented, but supportedPoseContracts stays empty until an
+actual verified pose producer is installed. No TCP/pose support is implied by
+these transport and validation changes.
+
 ## Implemented tool identity and offset selection (2026-09-11)
 
 `src/ncplot7py/config/machines.json` is the source of tool-command policy.

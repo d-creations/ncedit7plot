@@ -421,7 +421,17 @@ class NCExecutionEngine:
                     "sourceCode": motion_source_code,
                     "executionStep": execution_step,
                     "toolNumber": tool_number,
+                    "motionContext": getattr(motion_node, "motion_context", None) if canal_index < len(nodes) and len(nodes[canal_index]) > len(lines) else None,
                 }
+                state = self.cnc_control.get_nc_state(canal_index + 1)
+                pose_tools = getattr(state, "extra", {}).get("pose_tools", {}) if state is not None else {}
+                config = getattr(state, "machine_config", None) if state is not None else None
+                context = plot_line["motionContext"]
+                tool = pose_tools.get(tool_number) if isinstance(pose_tools, dict) else None
+                if config is not None and getattr(config, "simulation", None) and config.simulation.get("modelId") == "MILL_DEMO" and tool is not None:
+                    from ncplot7py.domain.tool_pose import project_mill_demo_poses
+                    point_data = [{"x": point_x, "y": point_y, "z": point_z} for point_x, point_y, point_z in zip(x, y, z)]
+                    plot_line["poses"] = project_mill_demo_poses(point_data, context, tool["mountingOrientationDegrees"])
                 lines.append(plot_line)
                 try:
                     runtime += float(t)

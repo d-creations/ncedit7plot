@@ -34,6 +34,9 @@ try:
     )
     from ncplot7py.domain.cnc_state import CNCState
     from ncplot7py.domain.tool_compensation import load_tool_data
+    from ncplot7py.domain.simulation_contract import (
+        SimulationContractError, validate_pose_request,
+    )
     from ncplot7py.domain.exceptions import ExceptionNode
 except Exception as e:
     # If imports fail, we can't do much. We'll log it and fail later if needed.
@@ -154,6 +157,8 @@ def build_segments_from_engine_output(canal_output: Dict[str, Any]) -> Dict[str,
             "lineNumber": entry.get("lineNumber") if entry.get("lineNumber") is not None else (executed_node_lines[idx] if idx < len(executed_node_lines) else None),
             "executionStep": entry.get("executionStep"),
             "toolNumber": entry.get("toolNumber", "unknown"),
+            "motionContext": entry.get("motionContext"),
+            "poses": entry.get("poses"),
             "points": points,
         }
         segments.append(seg)
@@ -289,6 +294,7 @@ def handle_list_machines() -> Dict[str, Any]:
         if get_machine_regex_patterns:
             machine["regexPatterns"] = get_machine_regex_patterns(machine["machineName"])
         config = get_machine_config(machine["machineName"])
+        machine.update(config.simulation_metadata())
         machine["toolSelection"] = config.tool_selection
         machine["variablePrefix"] = config.variable_prefix
         machine["fileExtensions"] = config.file_extensions
@@ -334,6 +340,7 @@ def handle_get_line_alignment_syntax() -> Dict[str, Any]:
 def handle_execute_programs(
     machinedata: List[Dict[str, Any]],
     tool_path_mode: str = "effective",
+    request_payload: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     tool_path_mode = str(tool_path_mode).strip().lower()
     if tool_path_mode not in {"effective", "center"}:
@@ -346,7 +353,22 @@ def handle_execute_programs(
         }
 
     if NCExecutionEngine is None:
-        return run_mock_parser(machinedata)
+        return {"success": False, "canal": {}, "message": ["NC execution engine unavailable"],
+                "errors": [{"code": "ENGINE_EXECUTION_FAILED", "message": "NC execution engine unavailable"}]}
+
+    try:
+        profiles = {machine["machineName"]: get_machine_config(machine["machineName"])
+                    for machine in get_available_machines()}
+        validate_pose_request(
+            request_payload if request_payload is not None else {
+                "machinedata": machinedata, "toolPathMode": tool_path_mode,
+            }, profiles,
+        )
+    except SimulationContractError as error:
+        return {
+            "success": False, "canal": {}, "message": [str(error)],
+            "errors": [error.as_dict()],
+        }
 
     # Ensure parser registration
     try:
@@ -431,6 +453,12 @@ def handle_execute_programs(
                 load_tool_data(state, tool_vals, machinedata[idx].get("toolOffsets", []))
             except ValueError as error:
                 return {"canal": {}, "message": [str(error)], "success": False}
+            simulation = machinedata[idx].get("simulation")
+            if isinstance(simulation, dict):
+                state.extra["pose_tools"] = {
+                    tool["toolNumber"]: {"mountingOrientationDegrees": list(tool["mountingOrientationDegrees"])}
+                    for tool in simulation.get("tools", [])
+                }
             init_states.append(state)
         else:
             init_states.append(None)
@@ -464,37 +492,13 @@ def handle_execute_programs(
         errors.append(error_info)
         logging.warning("NC execution error: %s", error_info)
     except Exception as e:
-        logging.warning("Real engine failed: %s. Falling back to mock parser.", e)
+        logging.exception("NC execution failed")
+        return {"success": False, "canal": {}, "message": ["NC execution failed"],
+                "errors": [{"code": "ENGINE_EXECUTION_FAILED", "message": "NC execution failed"}]}
 
-    use_mock = False
-    if engine_output is None:
-        use_mock = True
-    else:
-        total_points = 0
-        for canal in engine_output:
-            if isinstance(canal, dict):
-                total_points += len(canal.get("plot", []))
-            elif isinstance(canal, list):
-                total_points += len(canal)
-        
-        if total_points == 0 and any(len(p.strip()) > 0 for p in programs) and not engine_output_has_non_plot_data(engine_output):
-            logging.info("Real engine returned 0 points for non-empty program. Falling back to mock.")
-            use_mock = True
-
-    if use_mock and errors:
-        return {
-            "canal": {},
-            "message": ["NC execution failed"],
-            "success": False,
-            "errors": errors,
-            "hasErrors": True,
-        }
-
-    if use_mock:
-        result = run_mock_parser(machinedata)
-        if errors:
-            result["errors"] = errors
-        return result
+    if engine_output is None or errors:
+        return {"success": False, "canal": {}, "message": ["NC execution failed"],
+                "errors": errors or [{"code": "ENGINE_EXECUTION_FAILED", "message": "No engine result"}]}
 
     canal_results = {}
     messages = []
@@ -516,10 +520,7 @@ def handle_execute_programs(
                 "errors": errors,
             }
 
-    response = {"canal": canal_results, "message": messages, "success": True}
-    if errors:
-        response["errors"] = errors
-        response["hasErrors"] = True
+    response = {"canal": canal_results, "message": messages, "success": True, "executionOrigin": "engine"}
     return response
 
 def main():
@@ -564,6 +565,7 @@ def main():
             response = handle_execute_programs(
                 programs,
                 request_data.get("toolPathMode", "effective"),
+                request_payload=request_data,
             )
         
         elif isinstance(request_data, list):

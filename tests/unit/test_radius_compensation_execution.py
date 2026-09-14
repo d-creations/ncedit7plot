@@ -8,6 +8,35 @@ from ncplot7py.infrastructure.machines.base_stateful_control import UniversalCon
 
 
 class TestRadiusCompensationExecution(unittest.TestCase):
+    def test_zero_radius_keeps_compensation_active_for_register_change(self):
+        state = CNCState(machine_config=get_machine_config("FANUC_MILL"), tool_path_mode="center")
+        load_tool_data(state, [{"toolNumber": 1}], [
+            {"offsetNumber": 2, "rValue": 0}, {"offsetNumber": 3, "rValue": 2},
+        ])
+        engine = NCExecutionEngine(UniversalConfigDrivenControl(init_nc_states=[state]))
+        result = engine.get_Syncro_plot(["T1\nG17\nD2\nG41 G1 X10 Y0 F100\nD3 G1 X20 Y0"], synch=False)
+        self.assertFalse(engine.errors)
+        self.assertEqual(result[0]["plot"][0]["y"][-1], 0)
+        self.assertEqual(result[0]["plot"][-1]["y"][-1], 2)
+
+    def test_zero_radius_is_valid_for_milling_turning_and_swiss_profiles(self):
+        for machine_name, selection, tool_id in (
+            ("FANUC_MILL", "T1", 1),
+            ("FANUC_TURN", "T0101", 1),
+            ("FANUC_STAR_x-D_y-R_z_R", "T100\nT01", 1),
+            ("SIEMENS_840DI", 'T="CUTTER"', "CUTTER"),
+        ):
+            for command in ("G41", "G42"):
+                with self.subTest(machine=machine_name, command=command):
+                    plot = self._execute(
+                        machine_name,
+                        selection + f"\nG17\n{command} G1 X10 Y0 F100\nG1 X20 Y0\nG40",
+                        {tool_id: {"rValue": 0}}, "center",
+                    )
+                    self.assertTrue(plot)
+                    self.assertEqual(plot[-1]["toolNumber"], tool_id)
+                    self.assertEqual(plot[-1]["y"][-1], 0)
+
     def test_fanuc_entry_uses_next_executed_variable_motion(self):
         for machine_name, selection, endpoint in (
             ("FANUC_MILL", "T1", 10),

@@ -1,9 +1,156 @@
 from typing import Dict, Any, List, Tuple, Optional
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from copy import deepcopy
 import json
 import os
+import hashlib
+import math
 from importlib.resources import files
+
+POSE_CONTRACT = "workpiece-tool-reference-v1"
+
+
+def _simulation_object(value: Any, required: set[str]) -> dict:
+    if not isinstance(value, dict) or set(value) != required:
+        raise ValueError(f"Expected exactly these fields: {sorted(required)}")
+    return value
+
+
+def _simulation_text(value: Any) -> str:
+    if not isinstance(value, str) or not value.strip() or len(value) > 256:
+        raise ValueError("Expected a nonempty identifier of at most 256 characters")
+    return value
+
+
+def _simulation_integer(value: Any, minimum: int = 0) -> int:
+    if type(value) is not int or not minimum <= value <= 9007199254740991:
+        raise ValueError("Expected a safe integer in the supported range")
+    return value
+
+
+def _simulation_vector(value: Any) -> list:
+    if not isinstance(value, list) or len(value) != 3 or any(
+        type(component) not in (int, float) or not math.isfinite(component)
+        for component in value
+    ):
+        raise ValueError("Expected three finite numbers")
+    return value
+
+
+def _simulation_identifier(value: Any) -> tuple[type, Any]:
+    if type(value) is int:
+        _simulation_integer(value)
+    else:
+        _simulation_text(value)
+        if value == "unknown":
+            raise ValueError("unknown is reserved for unavailable tools")
+    return type(value), value
+
+
+def validate_simulation_config(value: Any, channels: int, axes: tuple[str, ...]) -> dict:
+    """Validate simulation settings that belong to a static machine profile."""
+    required = {
+        "schemaVersion", "revision", "modelId", "displayName", "fidelity",
+        "poseContract", "carriers", "toolMounts",
+    }
+    if not isinstance(value, dict) or set(value) not in (required, required | {"initialAxes"}):
+        raise ValueError(f"Expected these fields: {sorted(required)} with optional initialAxes")
+    config = value
+    if type(config["schemaVersion"]) is not int or config["schemaVersion"] != 1:
+        raise ValueError("Unsupported simulation schemaVersion")
+    _simulation_integer(config["revision"], 1)
+    _simulation_text(config["modelId"])
+    _simulation_text(config["displayName"])
+    if config["fidelity"] not in ("demo", "configured"):
+        raise ValueError("fidelity must be demo or configured")
+    if config["poseContract"] != POSE_CONTRACT:
+        raise ValueError("Unsupported simulation poseContract")
+    initial_axes = config.get("initialAxes", {})
+    if not isinstance(initial_axes, dict) or any(
+        axis not in axes or type(position) not in (int, float) or not math.isfinite(position)
+        for axis, position in initial_axes.items()
+    ):
+        raise ValueError("Invalid initialAxes")
+    if not isinstance(config["carriers"], list) or not 1 <= len(config["carriers"]) <= 64:
+        raise ValueError("Expected 1..64 carriers")
+    roles = {}
+    for carrier in config["carriers"]:
+        _simulation_object(carrier, {"id", "role", "referenceOrientationDegrees", "rotationChain"})
+        identity = _simulation_text(carrier["id"])
+        if identity in roles or carrier["role"] not in ("tool", "workpiece"):
+            raise ValueError("Duplicate carrier or invalid role")
+        roles[identity] = carrier["role"]
+        _simulation_vector(carrier["referenceOrientationDegrees"])
+        chain = carrier["rotationChain"]
+        if not isinstance(chain, list) or len(chain) > 16:
+            raise ValueError("Invalid rotation chain")
+        seen_axes = set()
+        for joint in chain:
+            _simulation_object(joint, {"axisId", "axis", "sign", "zeroDegrees"})
+            axis = _simulation_text(joint["axisId"])
+            if axis not in axes or axis in seen_axes:
+                raise ValueError("Unknown or repeated chain axis")
+            seen_axes.add(axis)
+            vector = _simulation_vector(joint["axis"])
+            if abs(math.hypot(*vector) - 1) > 1e-6:
+                raise ValueError("Rotation axis must be a unit vector")
+            if type(joint["sign"]) is not int or joint["sign"] not in (-1, 1):
+                raise ValueError("Rotation sign must be -1 or 1")
+            _simulation_vector([joint["zeroDegrees"], 0, 0])
+    mounts = config["toolMounts"]
+    if not isinstance(mounts, list) or len(mounts) > 4096:
+        raise ValueError("Invalid toolMounts list")
+    selections: dict[str, list[tuple[int, int]]] = {}
+    names: dict[str, set[str]] = {}
+    for mount in mounts:
+        _simulation_object(mount, {"channelId", "tools", "carrierId", "target"})
+        channel = _simulation_text(mount["channelId"])
+        if channel not in {str(number) for number in range(1, channels + 1)}:
+            raise ValueError("Unknown mount channel")
+        if roles.get(_simulation_text(mount["carrierId"])) != "tool":
+            raise ValueError("Mount requires a tool carrier")
+        target = mount["target"]
+        if isinstance(target, dict) and target.get("mode") == "fixed":
+            _simulation_object(target, {"mode", "workpieceCarrierId"})
+            targets = [target["workpieceCarrierId"]]
+        else:
+            _simulation_object(target, {"mode", "allowedWorkpieceCarrierIds"})
+            targets = target["allowedWorkpieceCarrierIds"]
+            if target["mode"] != "execution" or not isinstance(targets, list) or not targets:
+                raise ValueError("Invalid execution target")
+        if any(roles.get(_simulation_text(identity)) != "workpiece" for identity in targets):
+            raise ValueError("Target requires a workpiece carrier")
+        if len(set(targets)) != len(targets):
+            raise ValueError("Duplicate execution target")
+        selector = mount["tools"]
+        intervals = selections.setdefault(channel, [])
+        selected_names = names.setdefault(channel, set())
+        if isinstance(selector, dict) and selector.get("kind") == "numericRange":
+            _simulation_object(selector, {"kind", "from", "to"})
+            lower = _simulation_integer(selector["from"])
+            upper = _simulation_integer(selector["to"])
+            if lower > upper:
+                raise ValueError("Reversed tool range")
+            additions = [(lower, upper)]
+        else:
+            _simulation_object(selector, {"kind", "values"})
+            values = selector["values"]
+            if selector["kind"] != "identifiers" or not isinstance(values, list) or not 1 <= len(values) <= 4096:
+                raise ValueError("Invalid exact tool selector")
+            additions = []
+            for item in values:
+                kind, identity = _simulation_identifier(item)
+                if kind is int:
+                    additions.append((identity, identity))
+                elif identity in selected_names:
+                    raise ValueError("Overlapping tool assignments")
+                else:
+                    selected_names.add(identity)
+        for lower, upper in additions:
+            if any(lower <= end and start <= upper for start, end in intervals):
+                raise ValueError("Overlapping tool assignments")
+            intervals.append((lower, upper))
+    return deepcopy(config)
 
 @dataclass
 class MachineConfig:
@@ -41,8 +188,17 @@ class MachineConfig:
     file_extensions: Dict[str, Any] = field(default_factory=dict)
     regex_patterns: Dict[str, Any] = field(default_factory=dict)
     tool_selection: Dict[str, Any] = field(default_factory=dict)
+    axes: Tuple[str, ...] = ()
+    simulation: Optional[Dict[str, Any]] = None
 
     def __post_init__(self):
+        if type(self.channels) is not int or not 1 <= self.channels <= 3:
+            raise ValueError("channels must be between 1 and 3")
+        if not isinstance(self.axes, (list, tuple)) or any(not isinstance(axis, str) or not axis.strip() for axis in self.axes) or len(set(self.axes)) != len(self.axes):
+            raise ValueError("axes must contain unique nonempty IDs")
+        self.axes = tuple(self.axes)
+        if self.simulation is not None:
+            self.simulation = validate_simulation_config(self.simulation, self.channels, self.axes)
         policy = self.tool_selection
         if not isinstance(policy, dict):
             raise ValueError("tool_selection must be an object")
@@ -65,6 +221,22 @@ class MachineConfig:
         if not isinstance(codes, list) or any(type(code) is not int or code < 100 for code in codes):
             raise ValueError("subtool_codes must contain full positive tool codes")
 
+    def simulation_metadata(self) -> Dict[str, Any]:
+        """Return immutable machine capabilities exposed through discovery."""
+        canonical = json.dumps(
+            asdict(self),
+            sort_keys=True, separators=(",", ":"), allow_nan=False,
+        )
+        metadata = {
+            "axes": list(self.axes),
+            "availableChannels": self.channels,
+            "profileRevision": "sha256:" + hashlib.sha256(canonical.encode("utf-8")).hexdigest(),
+            "supportedPoseContracts": [POSE_CONTRACT] if self.simulation and self.simulation["modelId"] == "MILL_DEMO" else [],
+        }
+        if self.simulation is not None:
+            metadata["simulation"] = deepcopy(self.simulation)
+        return metadata
+
 
 # --- Machine Definitions ---
 
@@ -73,7 +245,7 @@ MACHINE_CONFIGS: Dict[str, MachineConfig] = {}
 
 def load_machine_configs():
     global MACHINE_CONFIGS
-    MACHINE_CONFIGS = {}
+    loaded_configs: Dict[str, MachineConfig] = {}
     try:
         try:
             config_text = files('ncplot7py').joinpath('config', 'machines.json').read_text(encoding='utf-8')
@@ -88,7 +260,7 @@ def load_machine_configs():
         # First pass: load base configs
         for key, val in data.items():
             if isinstance(val, dict):
-                MACHINE_CONFIGS[key] = MachineConfig(
+                loaded_configs[key] = MachineConfig(
                     name=val['name'],
                     control_type=val['control_type'],
                     variable_pattern=val['variable_pattern'],
@@ -122,15 +294,18 @@ def load_machine_configs():
                     file_extensions=val.get('file_extensions', {}),
                     regex_patterns=val.get('regex_patterns', {}),
                     tool_selection=deepcopy(val.get('tool_selection', {})),
+                    axes=val.get('axes', []),
+                    simulation=val.get('simulation'),
                 )
                 
         # Second pass: resolve aliases
         for key, val in data.items():
-            if isinstance(val, str) and val in MACHINE_CONFIGS:
-                MACHINE_CONFIGS[key] = MACHINE_CONFIGS[val]
+            if isinstance(val, str) and val in loaded_configs:
+                loaded_configs[key] = loaded_configs[val]
                 
     except Exception as e:
-        print(f"Warning: Failed to load machines.json: {e}")
+        raise ValueError(f"Failed to load machines.json: {e}") from e
+    MACHINE_CONFIGS = loaded_configs
 
 load_machine_configs()
 

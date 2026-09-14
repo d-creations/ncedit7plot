@@ -34,7 +34,7 @@ class RadiusCompensationCommandHandler(Handler):
                     message="Tool compensation cannot be activated without an active tool",
                     line=line_number,
                 )
-            if tool.radius is None or tool.radius <= 0.0:
+            if tool.radius is None or tool.radius < 0.0:
                 raise_nc_error(
                     ExceptionTyps.NCCodeErrors,
                     -100,
