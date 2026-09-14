@@ -84,3 +84,103 @@ def project_mill_demo_poses(points: list[dict[str, float]], context: dict[str, A
                       "reference": "millingTip", "frameId": "workpiece:tableBC"})
         previous = quaternion
     return poses
+
+
+def _rotation_axis(axis: list[float], degrees: float) -> list[list[float]]:
+    radians = math.radians(degrees)
+    cosine, sine = math.cos(radians), math.sin(radians)
+    x, y, z = axis
+    return [
+        [cosine + x * x * (1 - cosine), x * y * (1 - cosine) - z * sine, x * z * (1 - cosine) + y * sine],
+        [y * x * (1 - cosine) + z * sine, cosine + y * y * (1 - cosine), y * z * (1 - cosine) - x * sine],
+        [z * x * (1 - cosine) - y * sine, z * y * (1 - cosine) + x * sine, cosine + z * z * (1 - cosine)],
+    ]
+
+
+def _carrier_rotation(carrier: dict[str, Any], axes: dict[str, float]) -> list[list[float]]:
+    orientation = carrier["referenceOrientationDegrees"]
+    result = _matrix_multiply(
+        _rotation_z(orientation[2]),
+        _matrix_multiply(_rotation_y(orientation[1]), _rotation_x(orientation[0])),
+    )
+    for joint in carrier["rotationChain"]:
+        axis_id = joint["axisId"]
+        if axis_id not in axes:
+            raise ToolPoseError(f"POSE_COORDINATES_UNRESOLVED: missing rotary axis {axis_id}")
+        angle = joint["sign"] * (float(axes[axis_id]) - float(joint["zeroDegrees"]))
+        result = _matrix_multiply(result, _rotation_axis(joint["axis"], angle))
+    return result
+
+
+def _mount_for_tool(simulation: dict[str, Any], channel_id: str, tool_number: Any) -> dict[str, Any]:
+    for mount in simulation["toolMounts"]:
+        if mount["channelId"] != channel_id:
+            continue
+        selector = mount["tools"]
+        if selector["kind"] == "numericRange" and type(tool_number) is int and selector["from"] <= tool_number <= selector["to"]:
+            return mount
+        if selector["kind"] == "identifiers" and tool_number in selector["values"]:
+            return mount
+    raise ToolPoseError(f"POSE_TOOL_MOUNT_UNAVAILABLE: no fixed mount for tool {tool_number!r}")
+
+
+def project_fixed_target_poses(
+    points: list[dict[str, float]],
+    context: dict[str, Any],
+    mounting: list[float],
+    simulation: dict[str, Any],
+    channel_id: str,
+    tool_number: Any,
+    reference: str,
+) -> list[dict[str, Any]]:
+    """Project a fixed-target machine with configured tool/workpiece chains.
+
+    This intentionally refuses execution-selected targets. It is suitable for
+    the SR-20R fixed gang, B1, and back-tool assignments only.
+    """
+    if reference != "turningVirtualTip":
+        raise ToolPoseError("POSE_TOOL_REFERENCE_UNSUPPORTED: STAR requires turningVirtualTip")
+    mount = _mount_for_tool(simulation, channel_id, tool_number)
+    target = mount["target"]
+    if target.get("mode") == "fixed":
+        target_carrier_id = target["workpieceCarrierId"]
+    else:
+        target_carrier_id = context.get("targetCarrierId")
+        if target_carrier_id not in target.get("allowedWorkpieceCarrierIds", []):
+            raise ToolPoseError("POSE_TARGET_UNRESOLVED: executed target is missing or not allowed")
+    carriers = {carrier["id"]: carrier for carrier in simulation["carriers"]}
+    tool_carrier = carriers[mount["carrierId"]]
+    if target_carrier_id not in carriers:
+        raise ToolPoseError("POSE_TARGET_UNRESOLVED: unknown workpiece carrier")
+    workpiece_carrier = carriers[target_carrier_id]
+    start_axes = context.get("startAxes")
+    end_axes = context.get("endAxes")
+    if not isinstance(start_axes, dict) or not isinstance(end_axes, dict):
+        raise ToolPoseError("POSE_COORDINATES_UNRESOLVED: missing captured STAR axes")
+    values = [*mounting]
+    if any(type(value) not in (int, float) or not math.isfinite(value) for value in values):
+        raise ToolPoseError("POSE_COORDINATES_UNRESOLVED: non-finite mounting orientation")
+    tool_mount = _matrix_multiply(_rotation_z(mounting[2]), _matrix_multiply(_rotation_y(mounting[1]), _rotation_x(mounting[0])))
+    poses, previous = [], None
+    for index, point in enumerate(points):
+        coordinates = [point.get(axis) for axis in ("x", "y", "z")]
+        if any(type(value) not in (int, float) or not math.isfinite(value) for value in coordinates):
+            raise ToolPoseError("POSE_COORDINATES_UNRESOLVED: non-finite point")
+        progress = index / (len(points) - 1) if len(points) > 1 else 1
+        axes = {}
+        for axis in set(start_axes) | set(end_axes):
+            if axis in start_axes and axis in end_axes:
+                axes[axis] = float(start_axes[axis]) + (float(end_axes[axis]) - float(start_axes[axis])) * progress
+        tool_rotation = _carrier_rotation(tool_carrier, axes)
+        workpiece_rotation = _carrier_rotation(workpiece_carrier, axes)
+        orientation = _matrix_multiply(
+            [[workpiece_rotation[column][row] for column in range(3)] for row in range(3)],
+            _matrix_multiply(tool_rotation, tool_mount),
+        )
+        quaternion = _quaternion(orientation)
+        if previous is not None and sum(left * right for left, right in zip(previous, quaternion)) < 0:
+            quaternion = [-value for value in quaternion]
+        poses.append({"position": coordinates, "orientation": quaternion,
+                      "reference": reference, "frameId": f"workpiece:{workpiece_carrier['id']}"})
+        previous = quaternion
+    return poses

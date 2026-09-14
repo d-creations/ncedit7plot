@@ -41,6 +41,7 @@ class BaseStatefulCanal(BaseNCCanalInterface):
         self._state = init_state or CNCState()
         match = re.search(r"(\d+)$", str(name))
         self._state.extra.setdefault("path_number", int(match.group(1)) if match else 1)
+        self._initialize_configured_target()
         self._chain = None
         self._control_handler = None
         self._nodes: List[NCCommandNode] = []
@@ -48,6 +49,22 @@ class BaseStatefulCanal(BaseNCCanalInterface):
         self._tool_nodes: List[NCCommandNode] = []
         self._exec_sequence: List[NCCommandNode] = []
         self._tool_path_compensator = ToolPathCompensator()
+
+    def _initialize_configured_target(self) -> None:
+        config = getattr(self._state, "machine_config", None)
+        simulation = getattr(config, "simulation", None)
+        if not isinstance(simulation, dict):
+            return
+        channel_id = str(self._name)
+        for mount in simulation.get("toolMounts", []):
+            target = mount.get("target", {})
+            if str(mount.get("channelId")) != channel_id or target.get("mode") != "execution":
+                continue
+            carrier = target.get("defaultWorkpieceCarrierId")
+            if carrier:
+                self._state.extra.setdefault("star.targetCarrierId", carrier)
+                self._state.extra.setdefault("star.targetAxis", self._axis_for_workpiece(simulation, carrier))
+            break
 
     def get_name(self) -> str:
         return self._name
@@ -76,12 +93,66 @@ class BaseStatefulCanal(BaseNCCanalInterface):
             "tipOrientation": compensation.tip_orientation,
             "edgeNumber": compensation.edge_number,
         }
-        return {
+        context = {
             "channelId": str(self._name),
             "startAxes": dict(start_axes) if start_axes is not None else dict(axes),
             "endAxes": axes,
             "toolOffset": {key: value for key, value in tool_offset.items() if value is not None},
         }
+        target = self._resolve_motion_target()
+        if target is not None:
+            context.update(target)
+        return context
+
+    def _resolve_motion_target(self) -> Optional[Dict[str, str]]:
+        """Resolve the executed tool carrier and workpiece target for this motion."""
+        config = getattr(self._state, "machine_config", None)
+        simulation = getattr(config, "simulation", None)
+        if not isinstance(simulation, dict):
+            return None
+
+        active_tool = self._state.extra.get("active_tool_number")
+        if active_tool is None:
+            active_tool = self._state.extra.get("active_tool_name")
+        channel_id = str(self._name)
+        for mount in simulation.get("toolMounts", []):
+            if str(mount.get("channelId")) != channel_id:
+                continue
+            selector = mount.get("tools", {})
+            selected = False
+            if selector.get("kind") == "numericRange" and type(active_tool) is int:
+                selected = selector.get("from", 1) <= active_tool <= selector.get("to", 0)
+            elif selector.get("kind") == "identifiers":
+                selected = active_tool in selector.get("values", [])
+            if not selected:
+                continue
+            target = mount.get("target", {})
+            if target.get("mode") == "fixed":
+                workpiece = target.get("workpieceCarrierId")
+                return {
+                    "toolCarrierId": str(mount["carrierId"]),
+                    "targetCarrierId": str(workpiece),
+                    "targetAxis": self._axis_for_workpiece(simulation, str(workpiece)),
+                }
+            selected_target = self._state.extra.get("star.targetCarrierId")
+            allowed = target.get("allowedWorkpieceCarrierIds", [])
+            if selected_target in allowed:
+                return {
+                    "toolCarrierId": str(mount["carrierId"]),
+                    "targetCarrierId": str(selected_target),
+                    "targetAxis": str(self._state.extra.get("star.targetAxis") or self._axis_for_workpiece(simulation, selected_target)),
+                }
+            return None
+        return None
+
+    @staticmethod
+    def _axis_for_workpiece(simulation: Dict[str, object], carrier_id: str) -> str:
+        for carrier in simulation.get("carriers", []):
+            if carrier.get("id") != carrier_id:
+                continue
+            for joint in carrier.get("rotationChain", []):
+                return str(joint["axisId"])
+        return ""
 
     def _get_handler(self, handler_type: Type) -> Optional[Any]:
         """Utility to retrieve a specific instance of a handler from the chain."""

@@ -130,13 +130,14 @@ def validate_pose_request(payload: Any, profiles: Mapping[str, MachineConfig]) -
                 raise SimulationContractError(
                     "POSE_CONTRACT_UNSUPPORTED", "Machine profile has no verified pose producer", channel,
                 )
-            if config.simulation["modelId"] != "MILL_DEMO":
+            if config.simulation["modelId"] not in {"MILL_DEMO", "STAR_SR20R_IV_B", "STAR_SV20R", "STAR_SG42"}:
                 raise SimulationContractError(
-                    "POSE_CONTRACT_UNSUPPORTED", "Only MILL_DEMO pose output is implemented", channel,
+                    "POSE_CONTRACT_UNSUPPORTED", "Machine pose output is not implemented for this profile", channel,
                 )
-            if any(tool["reference"] != "millingTip" for tool in tools):
+            expected_reference = "millingTip" if config.simulation["modelId"] == "MILL_DEMO" else "turningVirtualTip"
+            if any(tool["reference"] != expected_reference for tool in tools):
                 raise SimulationContractError(
-                    "POSE_CONTRACT_UNSUPPORTED", "MILL_DEMO supports millingTip tools only", channel,
+                    "POSE_CONTRACT_UNSUPPORTED", f"{config.simulation['modelId']} supports {expected_reference} tools only", channel,
                 )
     except SimulationContractError:
         raise

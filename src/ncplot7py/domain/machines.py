@@ -114,10 +114,13 @@ def validate_simulation_config(value: Any, channels: int, axes: tuple[str, ...])
             _simulation_object(target, {"mode", "workpieceCarrierId"})
             targets = [target["workpieceCarrierId"]]
         else:
-            _simulation_object(target, {"mode", "allowedWorkpieceCarrierIds"})
+            if not isinstance(target, dict) or set(target) != {"mode", "allowedWorkpieceCarrierIds", "defaultWorkpieceCarrierId"}:
+                raise ValueError("Invalid execution target")
             targets = target["allowedWorkpieceCarrierIds"]
             if target["mode"] != "execution" or not isinstance(targets, list) or not targets:
                 raise ValueError("Invalid execution target")
+            if target["defaultWorkpieceCarrierId"] not in targets:
+                raise ValueError("Default target must be allowed")
         if any(roles.get(_simulation_text(identity)) != "workpiece" for identity in targets):
             raise ValueError("Target requires a workpiece carrier")
         if len(set(targets)) != len(targets):
@@ -231,7 +234,7 @@ class MachineConfig:
             "axes": list(self.axes),
             "availableChannels": self.channels,
             "profileRevision": "sha256:" + hashlib.sha256(canonical.encode("utf-8")).hexdigest(),
-            "supportedPoseContracts": [POSE_CONTRACT] if self.simulation and self.simulation["modelId"] == "MILL_DEMO" else [],
+            "supportedPoseContracts": [POSE_CONTRACT] if self.simulation and self.simulation["modelId"] in {"MILL_DEMO", "STAR_SR20R_IV_B", "STAR_SV20R", "STAR_SG42"} else [],
         }
         if self.simulation is not None:
             metadata["simulation"] = deepcopy(self.simulation)

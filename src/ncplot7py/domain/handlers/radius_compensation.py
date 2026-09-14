@@ -25,16 +25,9 @@ class RadiusCompensationCommandHandler(Handler):
             state.tool_compensation.startup_pending = False
             state.tool_radius = None
         elif command in {"G41", "G42"} or state.tool_compensation.radius_mode != "OFF":
-            tool = ToolDataResolver().resolve(state)
+            tool = ToolDataResolver().resolve(state, require_offset=False)
             line_number = getattr(node, "nc_code_line_nr", 0) or 0
-            if tool.tool_id is None:
-                raise_nc_error(
-                    ExceptionTyps.NCCodeErrors,
-                    -103,
-                    message="Tool compensation cannot be activated without an active tool",
-                    line=line_number,
-                )
-            if tool.radius is None or tool.radius < 0.0:
+            if tool.radius is not None and tool.radius < 0.0:
                 raise_nc_error(
                     ExceptionTyps.NCCodeErrors,
                     -100,
@@ -50,11 +43,12 @@ class RadiusCompensationCommandHandler(Handler):
                         and state.machine_config.control_type == "FANUC"
                     )
                 state.tool_compensation.radius_mode = "LEFT" if command == "G41" else "RIGHT"
-            state.tool_compensation.radius = tool.radius
+            radius = 0.0 if tool.radius is None else tool.radius
+            state.tool_compensation.radius = radius
             state.tool_compensation.tip_orientation = tool.tip_orientation
             state.tool_compensation.edge_number = tool.edge_number
             state.tool_compensation.activation_line = line_number
-            state.tool_radius = tool.radius
+            state.tool_radius = radius
             state.tool_quadrant = tool.tip_orientation
 
         return super().handle(node, state)
