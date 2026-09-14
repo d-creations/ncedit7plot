@@ -27,9 +27,13 @@ class _Node:
 class FakeControlHappy:
     def __init__(self):
         self._ran = []
+        self._state = CNCState(machine_config=get_machine_config("FANUC_MILL"))
 
     def get_canal_count(self):
         return 1
+
+    def get_nc_state(self, canal: int):
+        return self._state
 
     def run_nc_code_list(self, node_list, canal):
         # accept list of nodes
@@ -51,6 +55,9 @@ class FakeControlHappy:
 
 
 class FakeControlError:
+    def get_nc_state(self, canal: int):
+        return CNCState(machine_config=get_machine_config("FANUC_MILL"))
+
     def get_canal_count(self):
         return 1
 
@@ -99,6 +106,9 @@ class FakeControlWrappedExecutionError:
 
     def get_canal_count(self):
         return 1
+
+    def get_nc_state(self, canal: int):
+        return self._canal._state
 
     def run_nc_code_list(self, node_list, canal):
         self._canal.run_nc_code_list(node_list)

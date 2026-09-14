@@ -4,10 +4,12 @@ from copy import deepcopy
 from dataclasses import asdict, replace
 from unittest.mock import patch
 
-from ncplot7py.domain.machines import get_machine_config, load_machine_configs
+from ncplot7py.domain.machines import (
+    get_machine_config, load_machine_configs, validate_simulation_config,
+)
 from ncplot7py.domain.simulation_contract import (
-    POSE_CONTRACT, SimulationContractError, machine_simulation_metadata,
-    validate_pose_request, validate_simulation_config,
+    POSE_CONTRACT, SimulationContractError,
+    validate_pose_request,
 )
 
 
@@ -58,18 +60,18 @@ class TestSimulationContract(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_simulation_config(data, 1, ("B",))
 
-    def test_config_is_detached_and_not_automatic_pose_support(self):
+    def test_config_is_detached_and_machine_owns_pose_support(self):
         data = simulation()
         config = replace(
             get_machine_config("FANUC_MILL"), axes=("X", "Y", "Z", "B"), simulation=data,
         )
-        metadata = machine_simulation_metadata(config)
+        metadata = config.simulation_metadata()
         self.assertEqual(metadata["axes"], ["X", "Y", "Z", "B"])
         self.assertEqual(metadata["availableChannels"], 1)
-        self.assertEqual(metadata["supportedPoseContracts"], [])
+        self.assertEqual(metadata["supportedPoseContracts"], [POSE_CONTRACT])
         data["revision"] = 20
         self.assertEqual(config.simulation["revision"], 1)
-        changed = machine_simulation_metadata(replace(config, default_plane="G18"))
+        changed = replace(config, default_plane="G18").simulation_metadata()
         self.assertNotEqual(metadata["profileRevision"], changed["profileRevision"])
 
     def test_numeric_and_named_ids_are_distinct_but_overlaps_reject(self):
@@ -102,23 +104,21 @@ class TestSimulationContract(unittest.TestCase):
             validate_simulation_config(data, 2, ("B",))
 
     def test_pose_request_rejects_unknown_revision_and_unimplemented_producer(self):
-        config = get_machine_config("FANUC_MILL")
-        entry = {"program": "T1", "machineName": "FANUC_MILL", "canalNr": "1",
+        config = get_machine_config("FANUC_TURN")
+        entry = {"program": "T1", "machineName": "FANUC_TURN", "canalNr": "1",
                  "simulation": {"profileRevision": "old", "tools": []}}
         payload = {
             "poseContract": POSE_CONTRACT,
             "toolPathMode": "center", "machinedata": [entry],
         }
         with self.assertRaises(SimulationContractError) as failure:
-            validate_pose_request(payload, {"FANUC_MILL": config})
+            validate_pose_request(payload, {"FANUC_TURN": config})
         self.assertEqual(failure.exception.code, "PROFILE_REVISION_MISMATCH")
-        metadata = machine_simulation_metadata(config)
+        metadata = config.simulation_metadata()
         entry["simulation"]["profileRevision"] = metadata["profileRevision"]
         with self.assertRaises(SimulationContractError) as failure:
-            validate_pose_request(payload, {"FANUC_MILL": config})
-        self.assertEqual(
-            failure.exception.response()["errors"][0]["code"], "POSE_CONTRACT_UNSUPPORTED",
-        )
+            validate_pose_request(payload, {"FANUC_TURN": config})
+        self.assertEqual(failure.exception.as_dict()["code"], "POSE_CONTRACT_UNSUPPORTED")
         entry["simulation"]["tools"] = [{
             "toolNumber": 0, "reference": "millingTip",
             "mountingOrientationDegrees": [0, 0, 0],
@@ -129,7 +129,7 @@ class TestSimulationContract(unittest.TestCase):
             invalid = deepcopy(payload)
             invalid["machinedata"][0].update(change)
             with self.assertRaises(SimulationContractError) as failure:
-                validate_pose_request(invalid, {"FANUC_MILL": config})
+                validate_pose_request(invalid, {"FANUC_TURN": config})
             self.assertEqual(failure.exception.code, "SIMULATION_INPUT_INVALID")
 
 

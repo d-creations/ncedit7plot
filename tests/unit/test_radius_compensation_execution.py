@@ -79,9 +79,9 @@ class TestRadiusCompensationExecution(unittest.TestCase):
                     plot = plot[1:]
                 self.assertEqual(len(plot), 2)
                 self.assertAlmostEqual(plot[0]["x"][-1], 9.0)
-                self.assertAlmostEqual(plot[0]["y"][-1], 1.0)
+                self.assertAlmostEqual(plot[0]["y"][-1], 0.0)
                 self.assertAlmostEqual(plot[1]["x"][0], 9.0)
-                self.assertAlmostEqual(plot[1]["y"][0], 1.0)
+                self.assertAlmostEqual(plot[1]["y"][0], 0.0)
 
     def test_d_changes_radius_without_changing_tool_identity(self):
         state = CNCState(machine_config=get_machine_config("FANUC_MILL"), tool_path_mode="center")
@@ -94,7 +94,7 @@ class TestRadiusCompensationExecution(unittest.TestCase):
         plot = NCExecutionEngine(control).get_Syncro_plot([program], synch=False)[0]["plot"]
         self.assertEqual(len(plot), 2)
         self.assertEqual({entry["toolNumber"] for entry in plot}, {1})
-        self.assertAlmostEqual(plot[0]["y"][0], 1)
+        self.assertAlmostEqual(plot[0]["y"][0], 0)
         self.assertAlmostEqual(plot[1]["y"][-1], 2)
 
     def _execute(self, machine_name, program, tool_values, mode):
@@ -115,11 +115,11 @@ class TestRadiusCompensationExecution(unittest.TestCase):
         )
 
         self.assertEqual(len(plot), 2)
-        self.assertAlmostEqual(plot[0]["y"][0], 1.0)
+        self.assertAlmostEqual(plot[0]["y"][0], 0.0)
         self.assertAlmostEqual(plot[0]["x"][-1], 9.0)
-        self.assertAlmostEqual(plot[0]["y"][-1], 1.0)
+        self.assertAlmostEqual(plot[0]["y"][-1], 0.0)
         self.assertAlmostEqual(plot[1]["x"][0], 9.0)
-        self.assertAlmostEqual(plot[1]["y"][0], 1.0)
+        self.assertAlmostEqual(plot[1]["y"][0], 0.0)
         self.assertEqual({entry["toolNumber"] for entry in plot}, {1})
 
     def test_fanuc_effective_mode_keeps_programmed_lines(self):

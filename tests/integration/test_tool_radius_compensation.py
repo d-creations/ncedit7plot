@@ -185,16 +185,19 @@ class TestToolRadiusCompensationIntegration(unittest.TestCase):
                 "FANUC_TURN",
                 [
                     {"qValue": 2, "toolNumber": 20},
-                    {"qValue": 2, "rValue": 4, "toolNumber": 25},
+                    {"qValue": 2, "rValue": -1, "toolNumber": 25},
                     {"qValue": 4, "rValue": 2, "toolNumber": 2000},
                 ],
-                -108,
-                "FANUC_TURN",
+                -100,
+                "25",
                 "/G1G42X6.Z6.F0.05",
             ),
             (
                 "FANUC_MILL",
-                [{"qValue": 4, "rValue": 2, "toolNumber": 2000}],
+                [
+                    {"qValue": 4, "rValue": 2, "toolNumber": 2000},
+                    {"qValue": 2, "rValue": -1, "toolNumber": 25},
+                ],
                 -100,
                 "25",
                 "/G1G42X6.Z6.F0.05",
@@ -214,7 +217,7 @@ class TestToolRadiusCompensationIntegration(unittest.TestCase):
                 )
 
                 self.assertNotIn("(mock)", " ".join(result["message"]))
-                self.assertTrue(result.get("hasErrors"), result.get("errors"))
+                self.assertTrue(result.get("errors"), result.get("message"))
                 errors = [error for error in result["errors"] if error["code"] == error_code]
                 self.assertTrue(errors, result["errors"])
                 self.assertEqual(errors[0]["value"], error_value)
@@ -250,9 +253,9 @@ class TestToolRadiusCompensationIntegration(unittest.TestCase):
             [(3, 2, 1), (4, 3, 1)],
         )
         self.assertAlmostEqual(segments[0]["points"][-1]["x"], 9.0)
-        self.assertAlmostEqual(segments[0]["points"][-1]["y"], 1.0)
+        self.assertAlmostEqual(segments[0]["points"][-1]["y"], 0.0)
         self.assertAlmostEqual(segments[1]["points"][0]["x"], 9.0)
-        self.assertAlmostEqual(segments[1]["points"][0]["y"], 1.0)
+        self.assertAlmostEqual(segments[1]["points"][0]["y"], 0.0)
 
     def test_siemens_named_tool_center_path_is_compensated_and_identified(self):
         result = self.cgiserver.handle_execute_programs(

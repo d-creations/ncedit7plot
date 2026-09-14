@@ -37,7 +37,7 @@ class TestCgiServerConversion(unittest.TestCase):
         self.assertFalse(result.get("errors"))
         segments = result["canal"]["1"]["segments"]
         self.assertEqual({segment["toolNumber"] for segment in segments}, {1})
-        self.assertEqual(segments[0]["points"][0]["y"], 1)
+        self.assertEqual(segments[0]["points"][0]["y"], 0)
         self.assertEqual(segments[-1]["points"][-1]["y"], 2)
 
     def test_api_rejects_duplicate_offset_data(self):

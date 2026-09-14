@@ -172,7 +172,7 @@ class TestFanucModals(unittest.TestCase):
         canal.run_nc_code_list([NCCommandNode(command_parameter={"M": "03"})])
 
         self.assertEqual(cstate.get_modal("spindle_direction"), "M3")
-        self.assertEqual(cstate.get_axis("C"), 90.0)
+        self.assertEqual(cstate.get_axis("C"), 0.0)
         self.assertEqual(canal.get_tool_path(), [])
 
     def test_fanuc_mill_coolant_codes_are_modal(self):

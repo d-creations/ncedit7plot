@@ -7,6 +7,8 @@ from pathlib import Path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
 
 from ncplot7py.application.nc_execution import NCExecutionEngine
+from ncplot7py.domain.cnc_state import CNCState
+from ncplot7py.domain.machines import get_machine_config
 from ncplot7py.shared.nc_nodes import NCCommandNode
 from ncplot7py.shared import configure_logging, get_message_stack, configure_i18n
 
@@ -21,9 +23,13 @@ class _Point:
 class SimpleFakeControl:
     def __init__(self):
         self._canal_nodes = {}
+        self._state = CNCState(machine_config=get_machine_config("FANUC_MILL"))
 
     def get_canal_count(self):
         return 1
+
+    def get_nc_state(self, canal: int):
+        return self._state
 
     def run_nc_code_list(self, node_list, canal):
         self._canal_nodes[canal] = list(node_list)
