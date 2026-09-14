@@ -135,6 +135,28 @@ class TestRadiusCompensationExecution(unittest.TestCase):
         self.assertAlmostEqual(plot[2]["y"][-1], 10.0)
         self.assertEqual({entry["toolNumber"] for entry in plot}, {2})
 
+    def test_star_turn_q_value_changes_g18_center_path(self):
+        program = "T100\nT01\nG18\nG41 G1 X20 Z0 F100\nG1 X20 Z10\nG40"
+        q1_plot = self._execute(
+            "FANUC_STAR_x-D_y-R_z_R",
+            program,
+            {1: {"rValue": 1.0, "qValue": 1}},
+            "center",
+        )
+        q3_plot = self._execute(
+            "FANUC_STAR_x-D_y-R_z_R",
+            program,
+            {1: {"rValue": 1.0, "qValue": 3}},
+            "center",
+        )
+
+        self.assertNotEqual(q1_plot[-1]["x"], q3_plot[-1]["x"])
+        self.assertNotEqual(q1_plot[-1]["z"], q3_plot[-1]["z"])
+        self.assertAlmostEqual(q1_plot[-1]["x"][-1], 8.0)
+        self.assertAlmostEqual(q1_plot[-1]["z"][-1], 9.0)
+        self.assertAlmostEqual(q3_plot[-1]["x"][-1], 10.0)
+        self.assertAlmostEqual(q3_plot[-1]["z"][-1], 11.0)
+
 
 if __name__ == "__main__":
     unittest.main()

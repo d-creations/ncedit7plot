@@ -88,6 +88,46 @@ class TestToolPathCompensator(unittest.TestCase):
         self.assertIs(result, points)
         self.assertEqual([(point.x, point.y) for point in result], [(0, 0), (10, 0)])
 
+    def test_star_turn_q_value_shifts_tip_path_to_nose_center(self):
+        state = CNCState(
+            machine_config=get_machine_config("FANUC_STAR_x-D_y-R_z_R"),
+            tool_path_mode="center",
+        )
+        state.extra["g_group_16_plane"] = "X_Z"
+        state.extra["active_tool_number"] = 1
+        state.tool_compensation = ToolCompensationState(
+            radius_mode="LEFT",
+            radius=1.0,
+            tip_orientation=3,
+        )
+
+        result = ToolPathCompensator().project(
+            [Point(0, 0, 0), Point(10, 0, 0)],
+            state,
+        )
+
+        self.assertEqual([(point.x, point.z) for point in result], [(1.0, 2.0), (11.0, 2.0)])
+
+    def test_star_turn_different_q_values_produce_different_center_paths(self):
+        points = [Point(0, 0, 0), Point(10, 0, 0)]
+        results = []
+        for orientation in (1, 3):
+            state = CNCState(
+                machine_config=get_machine_config("FANUC_STAR_x-D_y-R_z_R"),
+                tool_path_mode="center",
+            )
+            state.extra["g_group_16_plane"] = "X_Z"
+            state.extra["active_tool_number"] = 1
+            state.tool_compensation = ToolCompensationState(
+                radius_mode="LEFT",
+                radius=1.0,
+                tip_orientation=orientation,
+            )
+            projected = ToolPathCompensator().project(points, state)
+            results.append((projected[-1].x, projected[-1].z))
+
+        self.assertNotEqual(results[0], results[1])
+
 
 if __name__ == "__main__":
     unittest.main()

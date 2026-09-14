@@ -12,6 +12,7 @@ from typing import List, Dict, Optional, Any, Tuple
 
 from ncplot7py.shared import (
     configure_logging,
+    get_logger,
     print_error,
     print_message,
     print_translated_error,
@@ -65,8 +66,12 @@ class NCExecutionEngine:
         except Exception:
             self.count_of_canals = 1
 
-        # Ensure logging and i18n are configured (caller can reconfigure)
-        configure_logging(console=True, web_buffer=False)
+        # Ensure logging and i18n are configured, but don't clobber a caller's
+        # existing setup (e.g. web_buffer=True) if the logger is already configured,
+        # otherwise errors logged here never reach frontends relying on
+        # get_message_stack().
+        if not get_logger().handlers:
+            configure_logging(console=True, web_buffer=False)
         configure_i18n()
         
         # Default language for error messages

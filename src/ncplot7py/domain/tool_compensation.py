@@ -144,6 +144,17 @@ class ToolPathCompensator:
         "X_Z": ("x", "z"),
         "Y_Z": ("y", "z"),
     }
+    _TURN_TIP_TO_CENTER = {
+        1: (-1.0, -1.0),
+        2: (1.0, -1.0),
+        3: (1.0, 1.0),
+        4: (-1.0, 1.0),
+        5: (0.0, -1.0),
+        6: (1.0, 0.0),
+        7: (0.0, 1.0),
+        8: (-1.0, 0.0),
+        9: (0.0, 0.0),
+    }
 
     def __init__(self) -> None:
         self._previous_points: Optional[List[Point]] = None
@@ -174,10 +185,14 @@ class ToolPathCompensator:
 
         side = 1.0 if compensation.radius_mode == "LEFT" else -1.0
         projected = self._offset_polyline(points, axes, radius * side)
+        tip_shift = self._turn_tip_to_center_shift(state, plane, radius)
+        if tip_shift is not None:
+            self._translate_points(projected, axes, tip_shift)
         signature = (
             compensation.radius_mode,
             radius,
             plane,
+            compensation.tip_orientation if tip_shift is not None else None,
             ToolDataResolver.active_tool_id(state),
         )
         has_planar_motion = any(
@@ -213,6 +228,33 @@ class ToolPathCompensator:
         self._previous_points = projected
         self._previous_signature = signature
         return projected
+
+    def _turn_tip_to_center_shift(
+        self,
+        state,
+        plane: str,
+        radius: float,
+    ) -> Optional[Tuple[float, float]]:
+        config = getattr(state, "machine_config", None)
+        if config is None or not str(getattr(config, "name", "")).startswith("FANUC_STAR"):
+            return None
+        if plane != "X_Z":
+            return None
+        orientation = getattr(state.tool_compensation, "tip_orientation", None)
+        if orientation not in self._TURN_TIP_TO_CENTER:
+            return None
+        vector = self._TURN_TIP_TO_CENTER[orientation]
+        return vector[0] * radius, vector[1] * radius
+
+    @staticmethod
+    def _translate_points(
+        points: List[Point],
+        axes: Tuple[str, str],
+        shift: Tuple[float, float],
+    ) -> None:
+        for point in points:
+            setattr(point, axes[0], getattr(point, axes[0]) + shift[0])
+            setattr(point, axes[1], getattr(point, axes[1]) + shift[1])
 
     def _offset_polyline(
         self,
