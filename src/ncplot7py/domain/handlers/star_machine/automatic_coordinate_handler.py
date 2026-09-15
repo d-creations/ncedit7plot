@@ -34,14 +34,10 @@ class StarAutomaticCoordinateHandler(Handler):
             self._handle_g131(node, state)
         elif code == "G132":
             self._require_words(node, code, set(), 3623)
-            if not state.extra.get("star.coordinate.projection_stored"):
-                self._error(node, 3642, "G132 requires the Z2 workpiece projection from G133")
             state.extra["star.coordinate.z2_set"] = True
             state.extra["star.coordinate.path2_machining"] = True
         elif code == "G133":
             self._require_words(node, code, set(), 3624)
-            if not state.extra.get("star.coordinate.pickup_set"):
-                self._error(node, 3643, "G133 requires prior G131 workpiece pick-up setting")
             state.extra["star.coordinate.projection_stored"] = True
 
         return super().handle(node, state)
@@ -57,8 +53,6 @@ class StarAutomaticCoordinateHandler(Handler):
 
     def _handle_g131(self, node: NCCommandNode, state: CNCState) -> None:
         self._require_words(node, "G131", {"B"}, 3621)
-        if not state.extra.get("star.coordinate.z1_set"):
-            self._error(node, 3630, "G131 requires prior G125 Z1 coordinate setting")
         if state.extra.get("star.axis.z1_moving"):
             self._error(node, 3628, "G131 cannot execute while the Z1 axis is moving")
 

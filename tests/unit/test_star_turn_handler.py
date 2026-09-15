@@ -69,13 +69,17 @@ class TestStarTurnHandler(unittest.TestCase):
         self.assertTrue(state.extra["star.coordinate.projection_stored"])
         self.assertTrue(state.extra["star.coordinate.path2_machining"])
 
-    def test_g131_requires_prior_g125(self):
+    def test_automatic_coordinate_commands_allow_missing_pickup_length_setup(self):
         handler = StarAutomaticCoordinateHandler()
+        state = CNCState()
 
-        with self.assertRaises(ExceptionNode) as error:
-            handler.handle(NCCommandNode(g_code_command={"G131"}), CNCState())
+        handler.handle(NCCommandNode(g_code_command={"G131"}), state)
+        handler.handle(NCCommandNode(g_code_command={"G133"}), state)
+        handler.handle(NCCommandNode(g_code_command={"G132"}), state)
 
-        self.assertEqual(error.exception.code, 3630)
+        self.assertTrue(state.extra["star.coordinate.pickup_set"])
+        self.assertTrue(state.extra["star.coordinate.projection_stored"])
+        self.assertTrue(state.extra["star.coordinate.path2_machining"])
 
     def test_g266_maps_parameters_to_state_variables_and_pops(self):
         handler = StarTurnHandler()
