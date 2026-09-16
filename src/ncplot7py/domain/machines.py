@@ -215,11 +215,11 @@ class MachineConfig:
             raise ValueError("named_tools must be boolean")
         if policy["mode"] == "star":
             tool_digits = policy.get("tool_digits")
-            if type(tool_digits) is not int or not 1 <= tool_digits <= 4:
-                raise ValueError("tool_digits must be between 1 and 4")
+            if tool_digits != [3, 4]:
+                raise ValueError("STAR tool_digits must be [3, 4]")
             offset_digits = policy.get("offset_digits")
-            if type(offset_digits) is not int or not 1 <= offset_digits <= 4:
-                raise ValueError("offset_digits must be between 1 and 4")
+            if offset_digits != [1, 2]:
+                raise ValueError("STAR offset_digits must be [1, 2]")
         elif policy["mode"] not in {"direct", "star"}:
             digits = policy.get("offset_digits")
             if type(digits) is not int or not 1 <= digits <= 4:
@@ -343,8 +343,8 @@ def get_machine_regex_patterns(control_type: str) -> Dict[str, Any]:
         number = rf"[1-9][0-9]{{0,{digits - 1}}}"
         mode = policy.get("mode", "direct")
         if mode == "star":
-            tool_digits = int(policy.get("tool_digits", 4))
-            pattern = rf"T\s*(?=0*[0-9]{{{tool_digits}}}(?![\d.]))0*([1-9][0-9]{{0,{tool_digits - 1}}})(?![\d.])"
+            tool_min, tool_max = policy.get("tool_digits", [3, 4])
+            pattern = rf"T\s*(?=0*[0-9]{{{tool_min},{tool_max}}}(?![\d.]))0*([1-9][0-9]{{0,{tool_max - 1}}})(?![\d.])"
         elif mode == "direct":
             pattern = rf"T\s*0*([0-9]{{1,{digits}}})(?![\d.])"
             if policy.get("named_tools"):

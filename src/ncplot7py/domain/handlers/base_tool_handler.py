@@ -47,15 +47,15 @@ class BaseToolHandler:
 
             if mode == "star":
                 digits = str(t_str).strip()
-                tool_digits = int(policy.get("tool_digits", 4))
-                offset_digits = int(policy.get("offset_digits", 2))
-                if len(digits) <= offset_digits:
+                tool_min, tool_max = policy.get("tool_digits", [3, 4])
+                offset_min, offset_max = policy.get("offset_digits", [1, 2])
+                if offset_min <= len(digits) <= offset_max:
                     state.extra["active_offset_number"] = t_val
                     return
-                if len(digits) != tool_digits or not digits.isdigit():
+                if not tool_min <= len(digits) <= tool_max or not digits.isdigit():
                     raise_nc_error(
                         ExceptionTyps.NCCodeErrors, 200,
-                        message="STAR tool codes must use four digits or a two-digit offset",
+                        message="STAR tool codes must use three or four digits; offsets use one or two digits",
                         value=t_str,
                     )
 

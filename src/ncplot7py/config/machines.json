@@ -150,7 +150,7 @@
   },
   "FANUC_STAR_x-D_y-R_z_R": {
     "name": "FANUC_STAR_x-D_y-R_z_R",
-    "tool_selection": {"mode": "star", "tool_digits": 4, "offset_digits": 2, "named_tools": false, "offset_scope": "global"},
+    "tool_selection": {"mode": "star", "tool_digits": [3, 4], "offset_digits": [1, 2], "named_tools": false, "offset_scope": "global"},
     "control_type": "FANUC",
     "parser_name": "fanuc",
     "lexer_name": "fanuc",
@@ -298,7 +298,7 @@
   },
   "FANUC_STAR_x-D_y-D_z_R": {
     "name": "FANUC_STAR_x-D_y-D_z_R",
-    "tool_selection": {"mode": "star", "tool_digits": 4, "offset_digits": 2, "named_tools": false, "offset_scope": "global"},
+    "tool_selection": {"mode": "star", "tool_digits": [3, 4], "offset_digits": [1, 2], "named_tools": false, "offset_scope": "global"},
     "regex_patterns": {
       "variables": {
         "pattern": "#(\\d+)",
@@ -447,7 +447,7 @@
   },
   "FANUC_STAR_x-D_y-R_z_R.M.S": {
     "name": "FANUC_STAR_x-D_y-R_z_R.M.S",
-    "tool_selection": {"mode": "star", "tool_digits": 4, "offset_digits": 2, "named_tools": false, "offset_scope": "global"},
+    "tool_selection": {"mode": "star", "tool_digits": [3, 4], "offset_digits": [1, 2], "named_tools": false, "offset_scope": "global"},
     "regex_patterns": {
       "variables": {
         "pattern": "#(\\d+)",
@@ -591,7 +591,7 @@
   },
   "FANUC_STAR_x-D_y-D_z_R.M.S": {
     "name": "FANUC_STAR_x-D_y-D_z_R.M.S",
-    "tool_selection": {"mode": "star", "tool_digits": 4, "offset_digits": 2, "named_tools": false, "offset_scope": "global"},
+    "tool_selection": {"mode": "star", "tool_digits": [3, 4], "offset_digits": [1, 2], "named_tools": false, "offset_scope": "global"},
     "regex_patterns": {
       "variables": {
         "pattern": "#(\\d+)",
@@ -1106,7 +1106,7 @@
     "variable_pattern": "#(\\d+)",
     "variable_prefix": "#",
     "tool_range": [0, 9999],
-    "tool_selection": {"mode": "star", "tool_digits": 4, "offset_digits": 2, "named_tools": false, "offset_scope": "global"},
+    "tool_selection": {"mode": "star", "tool_digits": [3, 4], "offset_digits": [1, 2], "named_tools": false, "offset_scope": "global"},
     "synchronization_strategy": "STAR_WAIT",
     "supported_gcode_groups": ["fanuc_alarm", "variable", "control_flow", "star_fanuc_tool_handler", "precheck", "fanuc_turn_spindle_limit", "fanuc_turn_units", "modal", "star_mcode_modal", "group_0_coordinate_set", "group_2_speed_mode", "star_spindle_fluctuation", "group_5_feed_mode", "group_16_plane", "fanuc_coordinate_rotation", "group_21_polar", "fanuc_cutter_comp", "cornering", "wait_code", "spindle_speed", "cycle_end", "star_automatic_coordinate", "star_g266", "star_b1_tilting", "star_g161_step_cycle", "fanuc_g92_threading", "fanuc_g76_threading", "fanuc_g36_circular_threading", "fanuc_turn_drilling_cycles", "motion"],
     "default_plane": "G18",
@@ -1148,7 +1148,7 @@
     "variable_pattern": "#(\\d+)",
     "variable_prefix": "#",
     "tool_range": [0, 9999],
-    "tool_selection": {"mode": "star", "tool_digits": 4, "offset_digits": 2, "named_tools": false, "offset_scope": "global"},
+    "tool_selection": {"mode": "star", "tool_digits": [3, 4], "offset_digits": [1, 2], "named_tools": false, "offset_scope": "global"},
     "synchronization_strategy": "STAR_WAIT",
     "supported_gcode_groups": ["fanuc_alarm", "variable", "control_flow", "star_fanuc_tool_handler", "precheck", "fanuc_turn_spindle_limit", "fanuc_turn_units", "modal", "star_mcode_modal", "group_0_coordinate_set", "group_2_speed_mode", "star_spindle_fluctuation", "group_5_feed_mode", "group_16_plane", "fanuc_coordinate_rotation", "group_21_polar", "fanuc_cutter_comp", "cornering", "wait_code", "spindle_speed", "cycle_end", "star_automatic_coordinate", "star_g266", "star_g161_step_cycle", "fanuc_g92_threading", "fanuc_g76_threading", "fanuc_g36_circular_threading", "fanuc_turn_drilling_cycles", "motion"],
     "default_plane": "G18",
@@ -1190,7 +1190,7 @@
     "variable_pattern": "#(\\d+)",
     "variable_prefix": "#",
     "tool_range": [0, 9999],
-    "tool_selection": {"mode": "star", "tool_digits": 4, "offset_digits": 2, "named_tools": false, "offset_scope": "global"},
+    "tool_selection": {"mode": "star", "tool_digits": [3, 4], "offset_digits": [1, 2], "named_tools": false, "offset_scope": "global"},
     "synchronization_strategy": "STAR_WAIT",
     "supported_gcode_groups": ["fanuc_alarm", "variable", "control_flow", "star_fanuc_tool_handler", "precheck", "fanuc_turn_spindle_limit", "fanuc_turn_units", "modal", "star_mcode_modal", "group_0_coordinate_set", "group_2_speed_mode", "star_spindle_fluctuation", "group_5_feed_mode", "group_16_plane", "fanuc_coordinate_rotation", "fanuc_cutter_comp", "cornering", "wait_code", "spindle_speed", "cycle_end", "star_automatic_coordinate", "star_g266", "fanuc_g92_threading", "fanuc_g76_threading", "fanuc_g36_circular_threading", "fanuc_turn_drilling_cycles", "motion"],
     "default_plane": "G18",
