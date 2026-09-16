@@ -4,7 +4,7 @@ from ncplot7py.domain.handlers.mcode_modal import BaseModalMCodeHandler
 
 
 class FanucMillModalMCodeHandler(BaseModalMCodeHandler):
-    pass
+    c_axis_reset_codes = {"M6"}
 
 
 __all__ = ["FanucMillModalMCodeHandler"]

@@ -21,13 +21,18 @@ class SiemensBuiltinHandler(Handler):
         command = (node.variable_command or "").strip()
         upper = command.upper()
 
-        if re.match(r"^SPOSA?\s*=", command, re.IGNORECASE):
+        if re.match(r"^SPOSA?(?:\[\d+\])?\s*=", command, re.IGNORECASE):
             command_name, value = command.split("=", 1)
             position = self._evaluator.evaluate(value, state)
             scope["spindle_position"] = position
             state.extra["siemens.c_axis_mode"] = "positionControlled"
             state.extra["siemens.c_axis_position"] = position
             state.extra["siemens.c_axis_command"] = command_name.strip().upper()
+            axis_match = re.match(r"^SPOSA?\[(\d+)\]", command, re.IGNORECASE)
+            axis = f"C{axis_match.group(1)}" if axis_match else "C"
+            if axis not in state.axes:
+                axis = "C"
+            state.set_axis(axis, position)
         elif upper == "RET" or upper == "M17":
             state.extra["program_returned"] = True
         elif upper == "STOPRE":

@@ -93,8 +93,8 @@ class TestSiemensAdvancedProgrammingIntegration(unittest.TestCase):
         self.assertTrue(siemens["preprocess_stops"])
 
         visited_points = [point for segment, _duration in path for point in segment]
-        self.assertTrue(any(abs(point.x - 3.0) < 0.001 and abs(point.y - 9.0) < 0.001 for point in visited_points))
-        self.assertTrue(any(abs(point.x - 4.0) < 0.001 and abs(point.y) < 0.001 and abs(point.z + 3.0) < 0.001 for point in visited_points))
+        self.assertTrue(any(abs(point.x + 3.0) < 0.001 and abs(point.y + 9.0) < 0.001 for point in visited_points))
+        self.assertTrue(any(abs(point.x + 4.0) < 0.001 and abs(point.y) < 0.001 and abs(point.z + 3.0) < 0.001 for point in visited_points))
         self.assertFalse(any(abs(point.x - 999.0) < 0.001 for point in visited_points))
 
     def test_execution_output_exposes_named_variables_and_arrays(self):

@@ -6,7 +6,7 @@ from ncplot7py.shared.nc_nodes import NCCommandNode
 
 
 class StarModalMCodeHandler(BaseModalMCodeHandler):
-    c_axis_reset_codes = {"M3", "M4", "M9"}
+    c_axis_reset_codes = {"M3", "M4", "M6", "M9"}
 
     def _return_c_axis_to_zero(self, node: NCCommandNode, state: CNCState):
         axis = state.extra.get("star.targetAxis")
