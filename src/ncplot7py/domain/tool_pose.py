@@ -150,7 +150,7 @@ def project_fixed_target_poses(
     if target.get("mode") == "fixed":
         target_carrier_id = target["workpieceCarrierId"]
     else:
-        target_carrier_id = context.get("targetCarrierId")
+        target_carrier_id = context.get("targetCarrierId", target.get("defaultWorkpieceCarrierId"))
         if target_carrier_id not in target.get("allowedWorkpieceCarrierIds", []):
             raise ToolPoseError("POSE_TARGET_UNRESOLVED: executed target is missing or not allowed")
     carriers = {carrier["id"]: carrier for carrier in simulation["carriers"]}

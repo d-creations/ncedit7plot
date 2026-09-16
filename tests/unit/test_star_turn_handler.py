@@ -9,6 +9,7 @@ from ncplot7py.domain.handlers.star_machine.g266_handler import StarG266Handler
 from ncplot7py.domain.handlers.star_machine.mcode_modal import StarModalMCodeHandler
 from ncplot7py.domain.handlers.star_machine.spindle_fluctuation_handler import StarSpindleFluctuationHandler
 from ncplot7py.domain.handlers.star_machine.star_turn_handler import StarTurnHandler
+from ncplot7py.domain.machines import get_machine_config
 
 
 class TestStarTurnHandler(unittest.TestCase):
@@ -182,13 +183,28 @@ class TestStarTurnHandler(unittest.TestCase):
 
     def test_m9_resets_selected_star_spindle_axis(self):
         handler = StarModalMCodeHandler()
-        state = CNCState(axes={"X": 0.0, "Y": 0.0, "Z": 0.0, "C1": 90.0, "C2": 45.0})
+        state = CNCState(
+            axes={"X": 0.0, "Y": 0.0, "Z": 0.0, "C1": 90.0, "C2": 45.0},
+            machine_config=get_machine_config("FANUC_STAR_SR20R_IV_B"),
+        )
 
-        handler.handle(NCCommandNode(command_parameter={"M": "172"}), state)
+        handler.handle(NCCommandNode(command_parameter={"M": "171"}), state)
         handler.handle(NCCommandNode(command_parameter={"M": "9"}), state)
 
         self.assertEqual(state.get_axis("C1"), 90.0)
         self.assertEqual(state.get_axis("C2"), 0.0)
+
+    def test_m171_routes_bare_c_to_sub_spindle_axis(self):
+        modal_handler = StarModalMCodeHandler()
+        motion_handler = MotionHandler()
+        state = CNCState(machine_config=get_machine_config("FANUC_STAR_SR20R_IV_B"))
+
+        modal_handler.handle(NCCommandNode(command_parameter={"M": "171"}), state)
+        motion_handler.handle(NCCommandNode(g_code_command={"G0"}, command_parameter={"C": "90"}), state)
+
+        self.assertEqual(state.extra["star.targetCarrierId"], "subSpindle")
+        self.assertEqual(state.extra["star.targetAxis"], "C2")
+        self.assertEqual(state.get_axis("C2"), 90.0)
 
 
 if __name__ == '__main__':

@@ -46,13 +46,22 @@ class MotionHandler(Handler):
             return "G03"
         return None
 
+    @staticmethod
+    def _physical_axis(state: CNCState, axis: str) -> str:
+        bindings = getattr(state.machine_config, "axis_bindings", {})
+        binding = bindings.get(axis) if isinstance(bindings, dict) else None
+        if isinstance(binding, dict):
+            return str(state.extra.get("star.targetAxis") or axis)
+        return axis
+
     def handle(self, node: NCCommandNode, state: CNCState) -> Tuple[Optional[List[Point]], Optional[float]]:
         # detect motion codes
         interp_mode = None  # 'G00','G01','G02','G03'
         for g in node.g_code:
             interp_mode = self._normalize_interp_mode(g) or interp_mode
 
-        motion_axes = {"X", "Y", "Z", "A", "B", "C", "U", "V", "W", "H"}
+        configured_axes = {str(axis).upper() for axis in getattr(state.machine_config, "axes", ())}
+        motion_axes = {"X", "Y", "Z", "A", "B", "C", "U", "V", "W", "H"} | configured_axes
         seventh_axis_name = self._get_seventh_axis_name(state)
         seventh_axis_maps_to = self._get_seventh_axis_maps_to(state)
         if seventh_axis_name:
@@ -79,6 +88,8 @@ class MotionHandler(Handler):
         for k, v in node.command_parameter.items():
             key = k.upper()
             if key in ("X", "Y", "Z", "A", "B", "C"):
+                absolute_target_spec[self._physical_axis(state, key)] = _to_float(v)
+            elif key in configured_axes:
                 absolute_target_spec[key] = _to_float(v)
             elif seventh_axis_name and key == seventh_axis_name:
                 value = _to_float(v)
@@ -88,6 +99,7 @@ class MotionHandler(Handler):
             elif key in ("U", "V", "W", "H"):
                 # UVW are incremental XYZ moves and H is an incremental C move.
                 mapped = {"U": "X", "V": "Y", "W": "Z", "H": "C"}[key]
+                mapped = self._physical_axis(state, mapped)
                 incremental_target_spec[mapped] = incremental_target_spec.get(mapped, 0.0) + _to_float(v)
             # I,J,K,R,F handled later
             # I,J,K,R,F handled later

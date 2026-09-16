@@ -1107,6 +1107,7 @@
     "variable_prefix": "#",
     "tool_range": [0, 9999],
     "tool_selection": {"mode": "star", "tool_digits": [3, 4], "offset_digits": [1, 2], "named_tools": false, "offset_scope": "global"},
+    "axis_bindings": {"C": {"defaultByChannel": {"1": {"targetCarrierId": "mainSpindle", "axisId": "C1"}, "2": {"targetCarrierId": "subSpindle", "axisId": "C2"}}, "mcodeOverrides": {"M171": {"targetCarrierId": "subSpindle", "axisId": "C2"}, "M172": {"targetCarrierId": "mainSpindle", "axisId": "C1"}}}},
     "synchronization_strategy": "STAR_WAIT",
     "supported_gcode_groups": ["fanuc_alarm", "variable", "control_flow", "star_fanuc_tool_handler", "precheck", "fanuc_turn_spindle_limit", "fanuc_turn_units", "modal", "star_mcode_modal", "group_0_coordinate_set", "group_2_speed_mode", "star_spindle_fluctuation", "group_5_feed_mode", "group_16_plane", "fanuc_coordinate_rotation", "group_21_polar", "fanuc_cutter_comp", "cornering", "wait_code", "spindle_speed", "cycle_end", "star_automatic_coordinate", "star_g266", "star_b1_tilting", "star_g161_step_cycle", "fanuc_g92_threading", "fanuc_g76_threading", "fanuc_g36_circular_threading", "fanuc_turn_drilling_cycles", "motion"],
     "default_plane": "G18",
@@ -1131,8 +1132,8 @@
         {"id": "subSpindle", "role": "workpiece", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": [{"axisId": "C2", "axis": [0, 0, 1], "sign": 1, "zeroDegrees": 0}]}
       ],
       "toolMounts": [
-        {"channelId": "1", "tools": {"kind": "numericRange", "from": 100, "to": 1699}, "carrierId": "gangToolPost", "target": {"mode": "fixed", "workpieceCarrierId": "mainSpindle"}},
-        {"channelId": "1", "tools": {"kind": "numericRange", "from": 1700, "to": 1999}, "carrierId": "tiltingToolUnit", "target": {"mode": "fixed", "workpieceCarrierId": "mainSpindle"}},
+        {"channelId": "1", "tools": {"kind": "numericRange", "from": 100, "to": 1699}, "carrierId": "gangToolPost", "target": {"mode": "execution", "allowedWorkpieceCarrierIds": ["mainSpindle", "subSpindle"], "defaultWorkpieceCarrierId": "mainSpindle"}},
+        {"channelId": "1", "tools": {"kind": "numericRange", "from": 1700, "to": 1999}, "carrierId": "tiltingToolUnit", "target": {"mode": "execution", "allowedWorkpieceCarrierIds": ["mainSpindle", "subSpindle"], "defaultWorkpieceCarrierId": "mainSpindle"}},
         {"channelId": "2", "tools": {"kind": "numericRange", "from": 2100, "to": 2800}, "carrierId": "backToolUnit", "target": {"mode": "fixed", "workpieceCarrierId": "subSpindle"}}
       ]
     }
@@ -1149,6 +1150,7 @@
     "variable_prefix": "#",
     "tool_range": [0, 9999],
     "tool_selection": {"mode": "star", "tool_digits": [3, 4], "offset_digits": [1, 2], "named_tools": false, "offset_scope": "global"},
+    "axis_bindings": {"C": {"defaultByChannel": {"1": {"targetCarrierId": "mainSpindle", "axisId": "C1"}, "2": {"targetCarrierId": "subSpindle", "axisId": "C2"}}, "mcodeOverrides": {"M171": {"targetCarrierId": "subSpindle", "axisId": "C2"}, "M172": {"targetCarrierId": "mainSpindle", "axisId": "C1"}}}},
     "synchronization_strategy": "STAR_WAIT",
     "supported_gcode_groups": ["fanuc_alarm", "variable", "control_flow", "star_fanuc_tool_handler", "precheck", "fanuc_turn_spindle_limit", "fanuc_turn_units", "modal", "star_mcode_modal", "group_0_coordinate_set", "group_2_speed_mode", "star_spindle_fluctuation", "group_5_feed_mode", "group_16_plane", "fanuc_coordinate_rotation", "group_21_polar", "fanuc_cutter_comp", "cornering", "wait_code", "spindle_speed", "cycle_end", "star_automatic_coordinate", "star_g266", "star_g161_step_cycle", "fanuc_g92_threading", "fanuc_g76_threading", "fanuc_g36_circular_threading", "fanuc_turn_drilling_cycles", "motion"],
     "default_plane": "G18",
@@ -1191,6 +1193,7 @@
     "variable_prefix": "#",
     "tool_range": [0, 9999],
     "tool_selection": {"mode": "star", "tool_digits": [3, 4], "offset_digits": [1, 2], "named_tools": false, "offset_scope": "global"},
+    "axis_bindings": {"C": {"defaultByChannel": {"1": {"targetCarrierId": "mainSpindle", "axisId": "C1"}, "2": {"targetCarrierId": "subSpindle", "axisId": "C2"}}, "mcodeOverrides": {"M171": {"targetCarrierId": "subSpindle", "axisId": "C2"}, "M172": {"targetCarrierId": "mainSpindle", "axisId": "C1"}}}},
     "synchronization_strategy": "STAR_WAIT",
     "supported_gcode_groups": ["fanuc_alarm", "variable", "control_flow", "star_fanuc_tool_handler", "precheck", "fanuc_turn_spindle_limit", "fanuc_turn_units", "modal", "star_mcode_modal", "group_0_coordinate_set", "group_2_speed_mode", "star_spindle_fluctuation", "group_5_feed_mode", "group_16_plane", "fanuc_coordinate_rotation", "fanuc_cutter_comp", "cornering", "wait_code", "spindle_speed", "cycle_end", "star_automatic_coordinate", "star_g266", "fanuc_g92_threading", "fanuc_g76_threading", "fanuc_g36_circular_threading", "fanuc_turn_drilling_cycles", "motion"],
     "default_plane": "G18",

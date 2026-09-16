@@ -28,14 +28,14 @@ class StarModalMCodeHandler(BaseModalMCodeHandler):
             state.extra["star.c_axis_mode"] = "positionControlled"
         elif m_code == "M9":
             state.extra["star.c_axis_mode"] = "spindleInvariant"
-        if m_code in {"M171", "M172"}:
+        bindings = getattr(state.machine_config, "axis_bindings", {})
+        c_binding = bindings.get("C", {}) if isinstance(bindings, dict) else {}
+        target = c_binding.get("mcodeOverrides", {}).get(m_code)
+        if isinstance(target, dict):
             state.extra["star.path_mode"] = m_code
-            if m_code == "M171":
-                state.extra["star.targetCarrierId"] = "mainSpindle"
-                state.extra["star.targetAxis"] = "C1"
-            else:
-                state.extra["star.targetCarrierId"] = "subSpindle"
-                state.extra["star.targetAxis"] = "C2"
+            state.extra["star.targetCarrierId"] = target["targetCarrierId"]
+            state.extra["star.targetAxis"] = target["axisId"]
+            state.set_axis(target["axisId"], state.get_axis(target["axisId"]))
         elif m_code in {"M40", "M41"}:
             state.extra["star.machining_mode"] = m_code
 

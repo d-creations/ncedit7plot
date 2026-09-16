@@ -52,6 +52,14 @@ class BaseStatefulCanal(BaseNCCanalInterface):
 
     def _initialize_configured_target(self) -> None:
         config = getattr(self._state, "machine_config", None)
+        bindings = getattr(config, "axis_bindings", {})
+        c_binding = bindings.get("C", {}) if isinstance(bindings, dict) else {}
+        default = c_binding.get("defaultByChannel", {}).get(str(self._name))
+        if isinstance(default, dict):
+            self._state.extra.setdefault("star.targetCarrierId", default["targetCarrierId"])
+            self._state.extra.setdefault("star.targetAxis", default["axisId"])
+            self._state.set_axis(default["axisId"], self._state.get_axis(default["axisId"]))
+            return
         simulation = getattr(config, "simulation", None)
         if not isinstance(simulation, dict):
             return

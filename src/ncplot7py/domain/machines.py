@@ -191,6 +191,7 @@ class MachineConfig:
     file_extensions: Dict[str, Any] = field(default_factory=dict)
     regex_patterns: Dict[str, Any] = field(default_factory=dict)
     tool_selection: Dict[str, Any] = field(default_factory=dict)
+    axis_bindings: Dict[str, Any] = field(default_factory=dict)
     axes: Tuple[str, ...] = ()
     simulation: Optional[Dict[str, Any]] = None
 
@@ -202,6 +203,23 @@ class MachineConfig:
         self.axes = tuple(self.axes)
         if self.simulation is not None:
             self.simulation = validate_simulation_config(self.simulation, self.channels, self.axes)
+        if not isinstance(self.axis_bindings, dict):
+            raise ValueError("axis_bindings must be an object")
+        for logical_axis, binding in self.axis_bindings.items():
+            if not isinstance(logical_axis, str) or not logical_axis.isalpha() or not isinstance(binding, dict):
+                raise ValueError("Invalid axis binding")
+            defaults = binding.get("defaultByChannel", {})
+            overrides = binding.get("mcodeOverrides", {})
+            if set(binding) != {"defaultByChannel", "mcodeOverrides"} or not isinstance(defaults, dict) or not isinstance(overrides, dict):
+                raise ValueError("Invalid axis binding definition")
+            for channel, target in defaults.items():
+                if str(channel) not in {str(number) for number in range(1, self.channels + 1)}:
+                    raise ValueError("Axis binding references an unknown channel")
+                self._validate_axis_binding_target(target)
+            for code, target in overrides.items():
+                if not isinstance(code, str) or not code.upper().startswith("M"):
+                    raise ValueError("Axis binding override must be an M-code")
+                self._validate_axis_binding_target(target)
         policy = self.tool_selection
         if not isinstance(policy, dict):
             raise ValueError("tool_selection must be an object")
@@ -230,6 +248,12 @@ class MachineConfig:
         codes = policy.get("subtool_codes", [])
         if not isinstance(codes, list) or any(type(code) is not int or code < 100 for code in codes):
             raise ValueError("subtool_codes must contain full positive tool codes")
+
+    def _validate_axis_binding_target(self, target: Any) -> None:
+        if not isinstance(target, dict) or set(target) != {"targetCarrierId", "axisId"}:
+            raise ValueError("Invalid axis binding target")
+        if target["axisId"] not in self.axes or not isinstance(target["targetCarrierId"], str):
+            raise ValueError("Axis binding references an unknown axis or carrier")
 
     def simulation_metadata(self) -> Dict[str, Any]:
         """Return immutable machine capabilities exposed through discovery."""
@@ -304,6 +328,7 @@ def load_machine_configs():
                     file_extensions=val.get('file_extensions', {}),
                     regex_patterns=val.get('regex_patterns', {}),
                     tool_selection=deepcopy(val.get('tool_selection', {})),
+                    axis_bindings=deepcopy(val.get('axis_bindings', {})),
                     axes=val.get('axes', []),
                     simulation=val.get('simulation'),
                 )
