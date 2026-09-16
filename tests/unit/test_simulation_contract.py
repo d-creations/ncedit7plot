@@ -140,14 +140,14 @@ class TestSimulationContract(unittest.TestCase):
             "poseContract": POSE_CONTRACT,
             "toolPathMode": "center",
             "machinedata": [{
-                "program": "T1\nG1 X1",
+                "program": "T100\nG1 X1",
                 "machineName": config.name,
                 "canalNr": "1",
                 "simulation": {
                     "profileRevision": metadata["profileRevision"],
                     "tools": [
-                        {"toolNumber": 1, "reference": "turningVirtualTip", "mountingOrientationDegrees": [0, 0, 0]},
-                        {"toolNumber": 2, "reference": "millingTip", "mountingOrientationDegrees": [0, 0, 0]},
+                        {"toolNumber": 100, "reference": "turningVirtualTip", "mountingOrientationDegrees": [0, 0, 0]},
+                        {"toolNumber": 101, "reference": "millingTip", "mountingOrientationDegrees": [0, 0, 0]},
                     ],
                 },
             }],
@@ -157,7 +157,7 @@ class TestSimulationContract(unittest.TestCase):
         poses = project_fixed_target_poses(
             [{"x": 0.0, "y": 0.0, "z": 0.0}],
             {"startAxes": {"C1": 0.0}, "endAxes": {"C1": 0.0}},
-            [0, 0, 0], config.simulation, "1", 2, "millingTip",
+            [0, 0, 0], config.simulation, "1", 101, "millingTip",
         )
 
         self.assertEqual(poses[0]["reference"], "millingTip")
@@ -168,7 +168,7 @@ class TestSimulationContract(unittest.TestCase):
         turning_context = {"startAxes": {}, "endAxes": {}, "workpieceRotationMode": "spindleInvariant"}
 
         poses = project_fixed_target_poses(
-            points, turning_context, [0, 0, 0], config.simulation, "1", 2, "turningVirtualTip",
+            points, turning_context, [0, 0, 0], config.simulation, "1", 100, "turningVirtualTip",
         )
         self.assertEqual(poses[0]["reference"], "turningVirtualTip")
 
@@ -176,7 +176,7 @@ class TestSimulationContract(unittest.TestCase):
             project_fixed_target_poses(
                 points,
                 {"startAxes": {}, "endAxes": {}, "workpieceRotationMode": "positionControlled"},
-                [0, 0, 0], config.simulation, "1", 2, "millingTip",
+                [0, 0, 0], config.simulation, "1", 100, "millingTip",
             )
 
 
