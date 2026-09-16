@@ -156,6 +156,8 @@ class TestSiemensAdvancedProgrammingSpec(unittest.TestCase):
         self.assertEqual(state.extra["alarms"][-1]["message"], "Axis distance too small")
         self.assertEqual(state.extra["alarms"][-1]["line"], 22)
         self.assertEqual(state.extra["siemens"]["spindle_position"], 180.0)
+        self.assertEqual(state.extra["siemens.c_axis_mode"], "positionControlled")
+        self.assertEqual(state.extra["siemens.c_axis_position"], 180.0)
         self.assertTrue(state.extra["program_returned"])
 
     def test_transformation_handler_toggles_traori_trafoof(self):

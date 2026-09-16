@@ -22,8 +22,12 @@ class SiemensBuiltinHandler(Handler):
         upper = command.upper()
 
         if re.match(r"^SPOSA?\s*=", command, re.IGNORECASE):
-            _, value = command.split("=", 1)
-            scope["spindle_position"] = self._evaluator.evaluate(value, state)
+            command_name, value = command.split("=", 1)
+            position = self._evaluator.evaluate(value, state)
+            scope["spindle_position"] = position
+            state.extra["siemens.c_axis_mode"] = "positionControlled"
+            state.extra["siemens.c_axis_position"] = position
+            state.extra["siemens.c_axis_command"] = command_name.strip().upper()
         elif upper == "RET" or upper == "M17":
             state.extra["program_returned"] = True
         elif upper == "STOPRE":

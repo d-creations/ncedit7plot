@@ -11,6 +11,7 @@ from ncplot7py.domain.simulation_contract import (
     POSE_CONTRACT, SimulationContractError,
     validate_pose_request,
 )
+from ncplot7py.domain.tool_pose import ToolPoseError, project_fixed_target_poses
 
 
 def simulation():
@@ -131,6 +132,52 @@ class TestSimulationContract(unittest.TestCase):
             with self.assertRaises(SimulationContractError) as failure:
                 validate_pose_request(invalid, {"FANUC_TURN": config})
             self.assertEqual(failure.exception.code, "SIMULATION_INPUT_INVALID")
+
+    def test_star_turn_mill_profile_accepts_both_tool_references(self):
+        config = get_machine_config("FANUC_STAR_SR20R_IV_B")
+        metadata = config.simulation_metadata()
+        payload = {
+            "poseContract": POSE_CONTRACT,
+            "toolPathMode": "center",
+            "machinedata": [{
+                "program": "T1\nG1 X1",
+                "machineName": config.name,
+                "canalNr": "1",
+                "simulation": {
+                    "profileRevision": metadata["profileRevision"],
+                    "tools": [
+                        {"toolNumber": 1, "reference": "turningVirtualTip", "mountingOrientationDegrees": [0, 0, 0]},
+                        {"toolNumber": 2, "reference": "millingTip", "mountingOrientationDegrees": [0, 0, 0]},
+                    ],
+                },
+            }],
+        }
+
+        validate_pose_request(payload, {config.name: config})
+        poses = project_fixed_target_poses(
+            [{"x": 0.0, "y": 0.0, "z": 0.0}],
+            {"startAxes": {"C1": 0.0}, "endAxes": {"C1": 0.0}},
+            [0, 0, 0], config.simulation, "1", 2, "millingTip",
+        )
+
+        self.assertEqual(poses[0]["reference"], "millingTip")
+
+    def test_star_turning_ignores_missing_spindle_phase_but_c_axis_mode_requires_it(self):
+        config = get_machine_config("FANUC_STAR_SR20R_IV_B")
+        points = [{"x": 0.0, "y": 0.0, "z": 0.0}]
+        turning_context = {"startAxes": {}, "endAxes": {}, "workpieceRotationMode": "spindleInvariant"}
+
+        poses = project_fixed_target_poses(
+            points, turning_context, [0, 0, 0], config.simulation, "1", 2, "turningVirtualTip",
+        )
+        self.assertEqual(poses[0]["reference"], "turningVirtualTip")
+
+        with self.assertRaisesRegex(ToolPoseError, "missing rotary axis C1"):
+            project_fixed_target_poses(
+                points,
+                {"startAxes": {}, "endAxes": {}, "workpieceRotationMode": "positionControlled"},
+                [0, 0, 0], config.simulation, "1", 2, "millingTip",
+            )
 
 
 if __name__ == "__main__":

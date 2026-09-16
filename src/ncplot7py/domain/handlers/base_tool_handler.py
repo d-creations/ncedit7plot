@@ -45,6 +45,20 @@ class BaseToolHandler:
             tool_number = t_val
             offset_number = None
 
+            if mode == "star":
+                digits = str(t_str).strip()
+                tool_digits = int(policy.get("tool_digits", 4))
+                offset_digits = int(policy.get("offset_digits", 2))
+                if len(digits) <= offset_digits:
+                    state.extra["active_offset_number"] = t_val
+                    return
+                if len(digits) != tool_digits or not digits.isdigit():
+                    raise_nc_error(
+                        ExceptionTyps.NCCodeErrors, 200,
+                        message="STAR tool codes must use four digits or a two-digit offset",
+                        value=t_str,
+                    )
+
             if mode in {"packed", "station"}:
                 divisor = 10 ** int(policy["offset_digits"])
                 station, offset_number = divmod(t_val, divisor)

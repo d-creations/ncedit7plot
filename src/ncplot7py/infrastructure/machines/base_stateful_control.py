@@ -99,9 +99,17 @@ class BaseStatefulCanal(BaseNCCanalInterface):
             "endAxes": axes,
             "toolOffset": {key: value for key, value in tool_offset.items() if value is not None},
         }
+        c_axis_mode = self._state.extra.get("star.c_axis_mode") or self._state.extra.get("siemens.c_axis_mode")
+        if c_axis_mode:
+            context["workpieceRotationMode"] = c_axis_mode
         target = self._resolve_motion_target()
         if target is not None:
             context.update(target)
+        if "workpieceRotationMode" not in context:
+            simulation = getattr(getattr(self._state, "machine_config", None), "simulation", None)
+            model_id = simulation.get("modelId") if isinstance(simulation, dict) else None
+            if isinstance(model_id, str) and model_id.startswith("STAR_"):
+                context["workpieceRotationMode"] = "spindleInvariant"
         return context
 
     def _resolve_motion_target(self) -> Optional[Dict[str, str]]:

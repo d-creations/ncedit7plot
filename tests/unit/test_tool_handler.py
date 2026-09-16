@@ -36,21 +36,24 @@ class TestToolHandler(unittest.TestCase):
 
         self.assertNotIn("active_tool_number", state.extra)
 
-    def test_star_t0400_uses_tool_four(self):
+    def test_star_full_t_code_selects_the_full_tool_identifier(self):
         state = CNCState(machine_config=get_machine_config("FANUC_STAR_x-D_y-D_z_R.M.S"))
 
-        StarFanucToolHandler().handle(NCCommandNode(command_parameter={"T": "0400"}), state)
+        StarFanucToolHandler().handle(NCCommandNode(command_parameter={"T": "2500"}), state)
 
-        self.assertEqual(state.extra["active_tool_number"], 4)
-        self.assertEqual(state.extra["current_tool_number"], 4)
-        self.assertEqual(state.extra["current_tool_code"], 400)
+        self.assertEqual(state.extra["active_tool_number"], 2500)
+        self.assertEqual(state.extra["current_tool_number"], 2500)
+        self.assertEqual(state.extra["current_tool_code"], 2500)
 
-    def test_star_t400_is_interpreted_as_tool_four_with_offset_zero(self):
+    def test_star_short_t_code_selects_offset_for_the_active_tool(self):
         state = CNCState(machine_config=get_machine_config("FANUC_STAR_x-D_y-D_z_R.M.S"))
+        handler = StarFanucToolHandler()
 
-        StarFanucToolHandler().handle(NCCommandNode(command_parameter={"T": "400"}), state)
+        handler.handle(NCCommandNode(command_parameter={"T": "2500"}), state)
+        handler.handle(NCCommandNode(command_parameter={"T": "25"}), state)
 
-        self.assertEqual(state.extra["current_tool_number"], 4)
+        self.assertEqual(state.extra["active_tool_number"], 2500)
+        self.assertEqual(state.extra["active_offset_number"], 25)
 
     def test_packed_tool_and_offsets_are_independent(self):
         state = CNCState(machine_config=get_machine_config("FANUC_TURN"))
@@ -63,14 +66,14 @@ class TestToolHandler(unittest.TestCase):
     def test_star_wear_command_does_not_change_tool_or_reset_b(self):
         state = CNCState(machine_config=get_machine_config("FANUC_STAR_x-D_y-D_z_R.M.S"))
         handler = StarFanucToolHandler()
-        handler.handle(NCCommandNode(command_parameter={"T": "400"}), state)
+        handler.handle(NCCommandNode(command_parameter={"T": "2500"}), state)
         state.set_axis("B", 25.0)
         handler.handle(NCCommandNode(command_parameter={"T": "02"}), state)
-        self.assertEqual(state.extra["active_tool_number"], 4)
+        self.assertEqual(state.extra["active_tool_number"], 2500)
         self.assertEqual(state.extra["active_offset_number"], 2)
         self.assertEqual(state.get_axis("B"), 25.0)
 
-    def test_star_subtools_keep_distinct_identity(self):
+    def test_star_full_tool_codes_keep_distinct_identity(self):
         state = CNCState(machine_config=get_machine_config("FANUC_STAR_x-D_y-D_z_R.M.S"))
         for code in [3411, 3412]:
             StarFanucToolHandler().handle(NCCommandNode(command_parameter={"T": str(code)}), state)
@@ -87,8 +90,8 @@ class TestToolHandler(unittest.TestCase):
             "SIEMENS_840DI": [("T0012", 12)],
             "FANUC_TURN": [("T0102", 1), ("T0100", 1), ("T02", None)],
             "FANUC_STAR_x-D_y-D_z_R.M.S": [
-                ("T400", 4), ("T02", None), ("T3411", 3411),
-                ("T3412", 3412), ("T0102", None),
+                ("T2500", 2500), ("T25", None), ("T3411", 3411),
+                ("T3412", 3412), ("T0102", 102),
             ],
         }
         for machine, samples in cases.items():

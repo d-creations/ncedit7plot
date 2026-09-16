@@ -112,6 +112,13 @@ def _carrier_rotation(carrier: dict[str, Any], axes: dict[str, float]) -> list[l
     return result
 
 
+def _workpiece_rotation(carrier: dict[str, Any], axes: dict[str, float], context: dict[str, Any]) -> list[list[float]]:
+    """Resolve workpiece orientation while allowing ordinary spindle turning."""
+    if context.get("workpieceRotationMode") == "spindleInvariant":
+        carrier = {**carrier, "rotationChain": []}
+    return _carrier_rotation(carrier, axes)
+
+
 def _mount_for_tool(simulation: dict[str, Any], channel_id: str, tool_number: Any) -> dict[str, Any]:
     for mount in simulation["toolMounts"]:
         if mount["channelId"] != channel_id:
@@ -138,8 +145,6 @@ def project_fixed_target_poses(
     This intentionally refuses execution-selected targets. It is suitable for
     the SR-20R fixed gang, B1, and back-tool assignments only.
     """
-    if reference != "turningVirtualTip":
-        raise ToolPoseError("POSE_TOOL_REFERENCE_UNSUPPORTED: STAR requires turningVirtualTip")
     mount = _mount_for_tool(simulation, channel_id, tool_number)
     target = mount["target"]
     if target.get("mode") == "fixed":
@@ -172,7 +177,7 @@ def project_fixed_target_poses(
             if axis in start_axes and axis in end_axes:
                 axes[axis] = float(start_axes[axis]) + (float(end_axes[axis]) - float(start_axes[axis])) * progress
         tool_rotation = _carrier_rotation(tool_carrier, axes)
-        workpiece_rotation = _carrier_rotation(workpiece_carrier, axes)
+        workpiece_rotation = _workpiece_rotation(workpiece_carrier, axes, context)
         orientation = _matrix_multiply(
             [[workpiece_rotation[column][row] for column in range(3)] for row in range(3)],
             _matrix_multiply(tool_rotation, tool_mount),

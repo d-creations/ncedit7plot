@@ -170,6 +170,26 @@ class TestStarTurnHandler(unittest.TestCase):
         self.assertTrue(points)
         self.assertEqual(points[-1].c, 0.0)
 
+    def test_m8_and_m9_toggle_c_axis_pose_mode(self):
+        handler = StarModalMCodeHandler()
+        state = CNCState()
+
+        handler.handle(NCCommandNode(command_parameter={"M": "8"}), state)
+        self.assertEqual(state.extra["star.c_axis_mode"], "positionControlled")
+
+        handler.handle(NCCommandNode(command_parameter={"M": "9"}), state)
+        self.assertEqual(state.extra["star.c_axis_mode"], "spindleInvariant")
+
+    def test_m9_resets_selected_star_spindle_axis(self):
+        handler = StarModalMCodeHandler()
+        state = CNCState(axes={"X": 0.0, "Y": 0.0, "Z": 0.0, "C1": 90.0, "C2": 45.0})
+
+        handler.handle(NCCommandNode(command_parameter={"M": "172"}), state)
+        handler.handle(NCCommandNode(command_parameter={"M": "9"}), state)
+
+        self.assertEqual(state.get_axis("C1"), 90.0)
+        self.assertEqual(state.get_axis("C2"), 0.0)
+
 
 if __name__ == '__main__':
     unittest.main()

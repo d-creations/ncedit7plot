@@ -23,7 +23,7 @@ class TestRadiusCompensationExecution(unittest.TestCase):
         for machine_name, selection, tool_id in (
             ("FANUC_MILL", "T1", 1),
             ("FANUC_TURN", "T0101", 1),
-            ("FANUC_STAR_x-D_y-R_z_R", "T100\nT01", 1),
+            ("FANUC_STAR_x-D_y-R_z_R", "T0001\nT01", 1),
             ("SIEMENS_840DI", 'T="CUTTER"', "CUTTER"),
         ):
             for command in ("G41", "G42"):
@@ -41,7 +41,7 @@ class TestRadiusCompensationExecution(unittest.TestCase):
         for machine_name, selection, endpoint in (
             ("FANUC_MILL", "T1", 10),
             ("FANUC_TURN", "T0101", 20),
-            ("FANUC_STAR_x-D_y-R_z_R", "T100\nT01", 20),
+            ("FANUC_STAR_x-D_y-R_z_R", "T0001\nT01", 20),
         ):
             for command, expected_x in (("G41", 9), ("G42", 11)):
                 with self.subTest(machine=machine_name, command=command):
@@ -65,7 +65,7 @@ class TestRadiusCompensationExecution(unittest.TestCase):
         for machine_name, selection, endpoint in (
             ("FANUC_MILL", "T1", 10),
             ("FANUC_TURN", "T0101", 20),
-            ("FANUC_STAR_x-D_y-R_z_R", "T100\nT01", 20),
+            ("FANUC_STAR_x-D_y-R_z_R", "T0001\nT01", 20),
         ):
             with self.subTest(machine=machine_name):
                 plot = self._execute(
@@ -165,7 +165,7 @@ class TestRadiusCompensationExecution(unittest.TestCase):
         self.assertEqual({entry["toolNumber"] for entry in plot}, {2})
 
     def test_star_turn_q_value_changes_g18_center_path(self):
-        program = "T100\nT01\nG18\nG41 G1 X20 Z0 F100\nG1 X20 Z10\nG40"
+        program = "T0001\nT01\nG18\nG41 G1 X20 Z0 F100\nG1 X20 Z10\nG40"
         q1_plot = self._execute(
             "FANUC_STAR_x-D_y-R_z_R",
             program,
