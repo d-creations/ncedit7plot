@@ -144,7 +144,10 @@
         {"id": "millingSpindle", "role": "tool", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": []},
         {"id": "tableBC", "role": "workpiece", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": [{"axisId": "B", "axis": [0, 1, 0], "sign": 1, "zeroDegrees": 0}, {"axisId": "C", "axis": [0, 0, 1], "sign": 1, "zeroDegrees": 0}]}
       ],
-      "toolMounts": [{"channelId": "1", "tools": {"kind": "numericRange", "from": 1, "to": 99}, "carrierId": "millingSpindle", "target": {"mode": "fixed", "workpieceCarrierId": "tableBC"}}],
+      "toolMounts": [
+        {"channelId": "1", "tools": {"kind": "numericRange", "from": 1, "to": 99}, "carrierId": "millingSpindle", "target": {"mode": "fixed", "workpieceCarrierId": "tableBC"}},
+        {"channelId": "1", "tools": {"kind": "namedTools"}, "carrierId": "millingSpindle", "target": {"mode": "fixed", "workpieceCarrierId": "tableBC"}}
+      ],
       "initialAxes": {"B": 0, "C": 0}
     }
   },
@@ -1029,7 +1032,10 @@
         {"id": "millingSpindle", "role": "tool", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": []},
         {"id": "tableBC", "role": "workpiece", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": [{"axisId": "B", "axis": [0, 1, 0], "sign": 1, "zeroDegrees": 0}, {"axisId": "C", "axis": [0, 0, 1], "sign": 1, "zeroDegrees": 0}]}
       ],
-      "toolMounts": [{"channelId": "1", "tools": {"kind": "numericRange", "from": 1, "to": 99}, "carrierId": "millingSpindle", "target": {"mode": "fixed", "workpieceCarrierId": "tableBC"}}],
+      "toolMounts": [
+        {"channelId": "1", "tools": {"kind": "numericRange", "from": 1, "to": 99}, "carrierId": "millingSpindle", "target": {"mode": "fixed", "workpieceCarrierId": "tableBC"}},
+        {"channelId": "1", "tools": {"kind": "namedTools"}, "carrierId": "millingSpindle", "target": {"mode": "fixed", "workpieceCarrierId": "tableBC"}}
+      ],
       "initialAxes": {"B": 0, "C": 0}
     }
   },

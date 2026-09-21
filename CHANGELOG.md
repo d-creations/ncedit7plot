@@ -7,11 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [0.2.0] - 2026-09-21
+
+### Added
+- Siemens simulation profiles now accept both numeric tool ranges and arbitrary named tools through generic named-tool mounts.
+- Added tool compensation support for configured tool radius and offset data.
 
 ### Fixed
 - STAR `G161` now accepts parameter-only `A`/`D` blocks, omitted or zero `Q`, and execution without a preceding `M41`; endpoint movement can use the active modal feed.
 - STAR `G125` now accepts a block without `Z` and treats it as `G125 Z0`.
+- Pose mount lookup now matches numeric tool IDs represented as either integers or numeric strings, including channel-specific STAR tools.
 
 ---
 

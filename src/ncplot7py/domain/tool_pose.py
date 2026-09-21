@@ -120,11 +120,18 @@ def _workpiece_rotation(carrier: dict[str, Any], axes: dict[str, float], context
 
 
 def _mount_for_tool(simulation: dict[str, Any], channel_id: str, tool_number: Any) -> dict[str, Any]:
+    numeric_tool_number = None
+    if isinstance(tool_number, int) and not isinstance(tool_number, bool):
+        numeric_tool_number = tool_number
+    elif isinstance(tool_number, str) and tool_number.isdecimal():
+        numeric_tool_number = int(tool_number)
     for mount in simulation["toolMounts"]:
         if mount["channelId"] != channel_id:
             continue
         selector = mount["tools"]
-        if selector["kind"] == "numericRange" and type(tool_number) is int and selector["from"] <= tool_number <= selector["to"]:
+        if selector["kind"] == "numericRange" and numeric_tool_number is not None and selector["from"] <= numeric_tool_number <= selector["to"]:
+            return mount
+        if selector["kind"] == "namedTools" and isinstance(tool_number, str) and tool_number != "unknown":
             return mount
         if selector["kind"] == "identifiers" and tool_number in selector["values"]:
             return mount

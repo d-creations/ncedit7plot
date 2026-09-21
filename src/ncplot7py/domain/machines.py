@@ -135,6 +135,9 @@ def validate_simulation_config(value: Any, channels: int, axes: tuple[str, ...])
             if lower > upper:
                 raise ValueError("Reversed tool range")
             additions = [(lower, upper)]
+        elif isinstance(selector, dict) and selector.get("kind") == "namedTools":
+            _simulation_object(selector, {"kind"})
+            additions = []
         else:
             _simulation_object(selector, {"kind", "values"})
             values = selector["values"]

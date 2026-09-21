@@ -179,6 +179,16 @@ class TestSimulationContract(unittest.TestCase):
                 [0, 0, 0], config.simulation, "1", 100, "millingTip",
             )
 
+    def test_star_channel_two_mount_accepts_string_tool_number(self):
+        config = get_machine_config("FANUC_STAR_SR20R_IV_B")
+        poses = project_fixed_target_poses(
+            [{"x": 0.0, "y": 0.0, "z": 0.0}],
+            {"startAxes": {}, "endAxes": {}, "workpieceRotationMode": "spindleInvariant"},
+            [0, 0, 0], config.simulation, "2", "2100", "millingTip",
+        )
+
+        self.assertEqual(poses[0]["frameId"], "workpiece:subSpindle")
+
 
 if __name__ == "__main__":
     unittest.main()
