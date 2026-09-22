@@ -242,7 +242,9 @@ class NCExecutionEngine:
         self._lexer = create_program_lexer(lexer_name)
         return self._lexer
 
-    def get_Syncro_plot(self, programs: List[str], synch: bool) -> List[Dict]:
+    def get_Syncro_plot(
+        self, programs: List[str], synch: bool, channel_number: Optional[int] = None
+    ) -> List[Dict]:
         """Create the plot for the given NC `programs`.
 
         Parameters
@@ -275,6 +277,7 @@ class NCExecutionEngine:
         error = False
 
         for program in programs:
+            physical_channel = canal_number + 1
             # Parse program into a list of command nodes
             node_list = []
             statements = lexer.lex(program)
@@ -289,7 +292,7 @@ class NCExecutionEngine:
                     node = parser.parse(raw_line, source_line)
                     node_list.append(node)
                 except Exception as parse_exc:
-                    self._add_error(parse_exc, line=source_line, canal=canal_number+1)
+                    self._add_error(parse_exc, line=source_line, canal=canal_number + 1)
                     error = True
                     break
 
@@ -423,7 +426,9 @@ class NCExecutionEngine:
                     "toolNumber": tool_number,
                     "motionContext": getattr(motion_node, "motion_context", None) if canal_index < len(nodes) and len(nodes[canal_index]) > len(lines) else None,
                 }
-                state = self.cnc_control.get_nc_state(canal_index + 1)
+                physical_channel = canal_index + 1
+                pose_channel = channel_number if channel_number is not None and len(tool_paths) == 1 else physical_channel
+                state = self.cnc_control.get_nc_state(physical_channel)
                 pose_tools = getattr(state, "extra", {}).get("pose_tools", {}) if state is not None else {}
                 config = getattr(state, "machine_config", None) if state is not None else None
                 context = plot_line["motionContext"]
@@ -437,7 +442,7 @@ class NCExecutionEngine:
                         from ncplot7py.domain.tool_pose import project_fixed_target_poses
                         plot_line["poses"] = project_fixed_target_poses(
                             point_data, context, tool["mountingOrientationDegrees"],
-                            config.simulation, str(canal_index + 1), tool_number, tool["reference"],
+                            config.simulation, str(pose_channel), tool_number, tool["reference"],
                         )
                 lines.append(plot_line)
                 try:

@@ -1140,7 +1140,7 @@
       "toolMounts": [
         {"channelId": "1", "tools": {"kind": "numericRange", "from": 100, "to": 1699}, "carrierId": "gangToolPost", "target": {"mode": "execution", "allowedWorkpieceCarrierIds": ["mainSpindle", "subSpindle"], "defaultWorkpieceCarrierId": "mainSpindle"}},
         {"channelId": "1", "tools": {"kind": "numericRange", "from": 1700, "to": 1999}, "carrierId": "tiltingToolUnit", "target": {"mode": "execution", "allowedWorkpieceCarrierIds": ["mainSpindle", "subSpindle"], "defaultWorkpieceCarrierId": "mainSpindle"}},
-        {"channelId": "2", "tools": {"kind": "numericRange", "from": 2100, "to": 2800}, "carrierId": "backToolUnit", "target": {"mode": "fixed", "workpieceCarrierId": "subSpindle"}}
+        {"channelId": "2", "tools": {"kind": "numericRange", "from": 2000, "to": 2900}, "carrierId": "backToolUnit", "target": {"mode": "fixed", "workpieceCarrierId": "subSpindle"}}
       ]
     }
   },
@@ -1182,7 +1182,7 @@
       ],
       "toolMounts": [
         {"channelId": "1", "tools": {"kind": "numericRange", "from": 100, "to": 1999}, "carrierId": "gangToolPost", "target": {"mode": "fixed", "workpieceCarrierId": "mainSpindle"}},
-        {"channelId": "2", "tools": {"kind": "numericRange", "from": 2100, "to": 2899}, "carrierId": "backToolUnit", "target": {"mode": "fixed", "workpieceCarrierId": "subSpindle"}},
+        {"channelId": "2", "tools": {"kind": "numericRange", "from": 2000, "to": 2999}, "carrierId": "backToolUnit", "target": {"mode": "fixed", "workpieceCarrierId": "subSpindle"}},
         {"channelId": "3", "tools": {"kind": "numericRange", "from": 3100, "to": 3800}, "carrierId": "turret", "target": {"mode": "execution", "allowedWorkpieceCarrierIds": ["mainSpindle", "subSpindle"], "defaultWorkpieceCarrierId": "mainSpindle"}}
       ]
     }

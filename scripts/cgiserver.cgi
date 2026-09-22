@@ -475,13 +475,17 @@ def handle_execute_programs(
     engine_output = None
     errors: List[Dict[str, Any]] = []
     try:
+        requested_channel = int(canal_names[0]) if len(programs) == 1 and canal_names else None
         control = UniversalConfigDrivenControl(
-            count_of_canals=len(programs), 
+            count_of_canals=len(programs),
             canal_names=canal_names,
             init_nc_states=init_states if any(s is not None for s in init_states) else None
         )
         engine = NCExecutionEngine(control)
-        engine_output = engine.get_Syncro_plot(programs, False)
+        if requested_channel in (None, 1):
+            engine_output = engine.get_Syncro_plot(programs, False)
+        else:
+            engine_output = engine.get_Syncro_plot(programs, False, requested_channel)
         
         errors = getattr(engine, 'errors', [])
     except ExceptionNode as e:
