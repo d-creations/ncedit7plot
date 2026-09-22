@@ -1141,7 +1141,8 @@
         {"channelId": "1", "tools": {"kind": "numericRange", "from":  100, "to": 1500}, "carrierId": "gangToolPost", "target": {"mode": "execution", "allowedWorkpieceCarrierIds": ["mainSpindle", "subSpindle"], "defaultWorkpieceCarrierId": "mainSpindle"}},
         {"channelId": "1", "tools": {"kind": "numericRange", "from": 1501, "to": 9999}, "carrierId": "tiltingToolUnit", "target": {"mode": "execution", "allowedWorkpieceCarrierIds": ["mainSpindle", "subSpindle"], "defaultWorkpieceCarrierId": "mainSpindle"}},
         {"channelId": "2", "tools": {"kind": "numericRange", "from":  100, "to": 9999}, "carrierId": "backToolUnit", "target": {"mode": "fixed", "workpieceCarrierId": "subSpindle"}}
-      ]
+      ],
+      "initialAxes": {"B1": 0, "C1": 0, "C2": 0}
     }
   },
   "FANUC_STAR_SV20R": {
@@ -1184,7 +1185,8 @@
         {"channelId": "1", "tools": {"kind": "numericRange", "from": 100, "to": 9999}, "carrierId": "gangToolPost", "target": {"mode": "fixed", "workpieceCarrierId": "mainSpindle"}},
         {"channelId": "2", "tools": {"kind": "numericRange", "from":  100, "to": 9999}, "carrierId": "backToolUnit", "target": {"mode": "fixed", "workpieceCarrierId": "subSpindle"}},
         {"channelId": "3", "tools": {"kind": "numericRange", "from": 100, "to": 9999}, "carrierId": "turret", "target": {"mode": "execution", "allowedWorkpieceCarrierIds": ["mainSpindle", "subSpindle"], "defaultWorkpieceCarrierId": "mainSpindle"}}
-      ]
+      ],
+      "initialAxes": {"C1": 0, "C2": 0}
     }
   },
   "FANUC_STAR_SG42": {
