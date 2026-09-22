@@ -47,10 +47,12 @@ class StarB1TiltingHandler(Handler):
         program_angle = str(angle)
         motion_node = NCCommandNode(
             g_code_command={"G0"},
-            command_parameter={"B": program_angle},
+            command_parameter={"B1": program_angle},
             nc_code_line_nr=node.nc_code_line_nr,
         )
         points, duration = self._motion.handle(motion_node, state)
+        # Keep the legacy logical B state in sync while pose capture uses B1.
+        state.axes["B"] = state.axes.get("B1", angle)
         result_points = points or []
         result_duration = duration or 0.0
         node.set_generated_motion_segments([{
