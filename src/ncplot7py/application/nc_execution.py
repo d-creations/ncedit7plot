@@ -434,16 +434,21 @@ class NCExecutionEngine:
                 context = plot_line["motionContext"]
                 tool = pose_tools.get(tool_number) if isinstance(pose_tools, dict) else None
                 if config is not None and getattr(config, "simulation", None) and tool is not None:
-                    point_data = [{"x": point_x, "y": point_y, "z": point_z} for point_x, point_y, point_z in zip(x, y, z)]
-                    if config.simulation.get("modelId") == "MILL_DEMO":
-                        from ncplot7py.domain.tool_pose import project_mill_demo_poses
-                        plot_line["poses"] = project_mill_demo_poses(point_data, context, tool["mountingOrientationDegrees"])
-                    elif config.simulation.get("modelId") in {"STAR_SR20R_IV_B", "STAR_SV20R", "STAR_SG42"}:
-                        from ncplot7py.domain.tool_pose import project_fixed_target_poses
-                        plot_line["poses"] = project_fixed_target_poses(
-                            point_data, context, tool["mountingOrientationDegrees"],
-                            config.simulation, str(pose_channel), tool_number, tool["reference"],
-                        )
+                    try:
+                        point_data = [{"x": point_x, "y": point_y, "z": point_z} for point_x, point_y, point_z in zip(x, y, z)]
+                        if config.simulation.get("modelId") == "MILL_DEMO":
+                            from ncplot7py.domain.tool_pose import project_mill_demo_poses
+                            plot_line["poses"] = project_mill_demo_poses(point_data, context, tool["mountingOrientationDegrees"])
+                        elif config.simulation.get("modelId") in {"STAR_SR20R_IV_B", "STAR_SV20R", "STAR_SG42"}:
+                            from ncplot7py.domain.tool_pose import project_fixed_target_poses
+                            plot_line["poses"] = project_fixed_target_poses(
+                                point_data, context, tool["mountingOrientationDegrees"],
+                                config.simulation, str(pose_channel), tool_number, tool["reference"],
+                            )
+                    except Exception as pose_error:
+                        self._add_error(pose_error, line=line_number or 0, canal=physical_channel)
+                        error = True
+                        break
                 lines.append(plot_line)
                 try:
                     runtime += float(t)
