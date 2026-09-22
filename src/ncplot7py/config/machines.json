@@ -1138,8 +1138,8 @@
         {"id": "subSpindle", "role": "workpiece", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": [{"axisId": "C2", "axis": [0, 0, 1], "sign": 1, "zeroDegrees": 0}]}
       ],
       "toolMounts": [
-        {"channelId": "1", "tools": {"kind": "numericRange", "from":  100, "to": 9999}, "carrierId": "gangToolPost", "target": {"mode": "execution", "allowedWorkpieceCarrierIds": ["mainSpindle", "subSpindle"], "defaultWorkpieceCarrierId": "mainSpindle"}},
-        {"channelId": "1", "tools": {"kind": "numericRange", "from": 100, "to": 9999}, "carrierId": "tiltingToolUnit", "target": {"mode": "execution", "allowedWorkpieceCarrierIds": ["mainSpindle", "subSpindle"], "defaultWorkpieceCarrierId": "mainSpindle"}},
+        {"channelId": "1", "tools": {"kind": "numericRange", "from":  100, "to": 1500}, "carrierId": "gangToolPost", "target": {"mode": "execution", "allowedWorkpieceCarrierIds": ["mainSpindle", "subSpindle"], "defaultWorkpieceCarrierId": "mainSpindle"}},
+        {"channelId": "1", "tools": {"kind": "numericRange", "from": 1501, "to": 9999}, "carrierId": "tiltingToolUnit", "target": {"mode": "execution", "allowedWorkpieceCarrierIds": ["mainSpindle", "subSpindle"], "defaultWorkpieceCarrierId": "mainSpindle"}},
         {"channelId": "2", "tools": {"kind": "numericRange", "from":  100, "to": 9999}, "carrierId": "backToolUnit", "target": {"mode": "fixed", "workpieceCarrierId": "subSpindle"}}
       ]
     }
