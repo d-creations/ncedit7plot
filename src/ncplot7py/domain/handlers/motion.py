@@ -48,6 +48,9 @@ class MotionHandler(Handler):
 
     @staticmethod
     def _physical_axis(state: CNCState, axis: str) -> str:
+        axis_map = state.extra.get("axis_map")
+        if isinstance(axis_map, dict) and axis in axis_map:
+            return str(axis_map[axis])
         bindings = getattr(state.machine_config, "axis_bindings", {})
         binding = bindings.get(axis) if isinstance(bindings, dict) else None
         if isinstance(binding, dict):
@@ -114,6 +117,16 @@ class MotionHandler(Handler):
         resolved = state.resolve_target(normalized_absolute_target_spec, absolute=absolute_mode)
         for axis, delta in normalized_incremental_target_spec.items():
             resolved[axis] = resolved.get(axis, state.get_axis(axis)) + delta
+
+        axis_map = state.extra.get("axis_map")
+        if isinstance(axis_map, dict):
+            for logical, physical in axis_map.items():
+                if physical in resolved:
+                    resolved[logical] = resolved[physical]
+                if physical in start and logical not in start:
+                    start[logical] = start[physical]
+                elif logical in start and physical not in start:
+                    start[physical] = start[logical]
 
         # interpolation parameters
         params = {k.upper(): _to_float(v) for k, v in node.command_parameter.items()}

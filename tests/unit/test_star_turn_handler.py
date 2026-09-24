@@ -184,10 +184,11 @@ class TestStarTurnHandler(unittest.TestCase):
     def test_m9_resets_selected_star_spindle_axis(self):
         handler = StarModalMCodeHandler()
         state = CNCState(
-            axes={"X": 0.0, "Y": 0.0, "Z": 0.0, "C1": 90.0, "C2": 45.0},
+            axes={"X": 0.0, "Y": 0.0, "Z": 0.0, "C1": 0.0, "C2": 0.0},
             machine_config=get_machine_config("FANUC_STAR_SR20R_IV_B"),
         )
-
+        state.set_axis("C1", 90.0)
+        state.set_axis("C2", 45.0)
         handler.handle(NCCommandNode(command_parameter={"M": "171"}), state)
         handler.handle(NCCommandNode(command_parameter={"M": "9"}), state)
 

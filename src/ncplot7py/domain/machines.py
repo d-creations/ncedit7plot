@@ -213,7 +213,7 @@ class MachineConfig:
                 raise ValueError("Invalid axis binding")
             defaults = binding.get("defaultByChannel", {})
             overrides = binding.get("mcodeOverrides", {})
-            if set(binding) != {"defaultByChannel", "mcodeOverrides"} or not isinstance(defaults, dict) or not isinstance(overrides, dict):
+            if not set(binding).issubset({"defaultByChannel", "mcodeOverrides"}) or "defaultByChannel" not in binding or not isinstance(defaults, dict) or not isinstance(overrides, dict):
                 raise ValueError("Invalid axis binding definition")
             for channel, target in defaults.items():
                 if str(channel) not in {str(number) for number in range(1, self.channels + 1)}:
@@ -253,9 +253,11 @@ class MachineConfig:
             raise ValueError("subtool_codes must contain full positive tool codes")
 
     def _validate_axis_binding_target(self, target: Any) -> None:
-        if not isinstance(target, dict) or set(target) != {"targetCarrierId", "axisId"}:
+        if not isinstance(target, dict) or not ({"axisId"}.issubset(set(target)) and set(target).issubset({"targetCarrierId", "axisId"})):
             raise ValueError("Invalid axis binding target")
-        if target["axisId"] not in self.axes or not isinstance(target["targetCarrierId"], str):
+        if target["axisId"] not in self.axes:
+            raise ValueError("Axis binding references an unknown axis or carrier")
+        if "targetCarrierId" in target and not isinstance(target["targetCarrierId"], str):
             raise ValueError("Axis binding references an unknown axis or carrier")
 
     def simulation_metadata(self) -> Dict[str, Any]:

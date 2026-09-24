@@ -51,22 +51,17 @@ class BaseStatefulCanal(BaseNCCanalInterface):
         self._tool_path_compensator = ToolPathCompensator()
 
     def _initialize_configured_target(self) -> None:
+        from ncplot7py.domain.handlers.axis_binding import AxisBindingHandler
+        AxisBindingHandler.apply_bindings(self._state)
+
         config = getattr(self._state, "machine_config", None)
-        bindings = getattr(config, "axis_bindings", {})
-        c_binding = bindings.get("C", {}) if isinstance(bindings, dict) else {}
-        default = c_binding.get("defaultByChannel", {}).get(str(self._name))
-        if isinstance(default, dict):
-            self._state.extra.setdefault("star.targetCarrierId", default["targetCarrierId"])
-            self._state.extra.setdefault("star.targetAxis", default["axisId"])
-            self._state.set_axis(default["axisId"], self._state.get_axis(default["axisId"]))
-            return
         simulation = getattr(config, "simulation", None)
         if not isinstance(simulation, dict):
             return
-        channel_id = str(self._name)
+        channel_id = str(self._state.extra.get("path_number", 1))
         for mount in simulation.get("toolMounts", []):
             target = mount.get("target", {})
-            if str(mount.get("channelId")) != channel_id or target.get("mode") != "execution":
+            if str(mount.get("channelId")) not in (channel_id, str(self._name)) or target.get("mode") != "execution":
                 continue
             carrier = target.get("defaultWorkpieceCarrierId")
             if carrier:
@@ -376,6 +371,7 @@ class BaseStatefulControl(BaseNCControlInterface):
 
 HANDLER_REGISTRY = {
     # Core
+    "axis_binding": ("ncplot7py.domain.handlers.axis_binding", "AxisBindingHandler"),
     "variable": ("ncplot7py.domain.handlers.variable", "VariableHandler"),
     "fanuc_alarm": ("ncplot7py.domain.handlers.fanuc_alarm", "FanucAlarmHandler"),
     "control_flow": ("ncplot7py.domain.handlers.control_flow", "ControlFlowHandler"),
