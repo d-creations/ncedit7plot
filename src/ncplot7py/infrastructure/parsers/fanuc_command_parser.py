@@ -107,7 +107,7 @@ class FanucCommandParser(BaseNCCommandParser):
                         line=line_nr or 0,
                         source_line=nc_command_string,
                     )
-            elif re.match(r"^[A-Z][0-9]+=", code):
+            elif re.match(r"^[A-Z][0-9]+=", code) and not re.match(r"^[A-Za-z][0-9]+=", code):
                 if var_calculation_str:
                     var_calculation_str += " " + code
                 else:
@@ -122,7 +122,14 @@ class FanucCommandParser(BaseNCCommandParser):
             elif code.startswith('M'):
                 axis_coordinate_dict.update({code[:1]: code[1:]})
             elif code.startswith(('A', 'B', 'C', 'N', 'T', 'S', 'F', 'D', 'X', 'Y', 'Z', 'R', 'H', 'U', 'V', 'W', 'K', 'L', 'I', 'J', 'P', 'Q', 'x', 'y', 'z', 'u', 'v', 'w', 'r', 'g', 'j', 'p', 'i', 'k', 'l')):
-                key = code[:1]
+                # Check for explicit multi-character axis assignment like Z3=25.0, X2=10.0, C2=180.0
+                multi_match = re.match(r"^([A-Za-z]\d+)=(.*)$", code)
+                if multi_match:
+                    key = multi_match.group(1).upper()
+                    val = multi_match.group(2)
+                else:
+                    key = code[:1]
+                    val = code[1:]
                 if key in axis_coordinate_dict:
                     domain_exceptions.raise_nc_error(
                         domain_exceptions.ExceptionTyps.NCCodeErrors,
@@ -132,7 +139,7 @@ class FanucCommandParser(BaseNCCommandParser):
                         line=line_nr or 0,
                         source_line=nc_command_string,
                     )
-                axis_coordinate_dict.update({key: code[1:]})
+                axis_coordinate_dict.update({key: val})
 
         return NCCommandNode(
             g_code_command=g_code_set,

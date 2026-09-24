@@ -25,8 +25,63 @@ Numeric = float
 
 
 @dataclass
+class MachineState:
+    """Represents the physical CNC machine state shared across channels.
+
+    - physical_axes: Current coordinate of all physical axes (e.g. X1, Y1, Z1, B1, C1, X2, Y2, Z2, C2).
+    - global_parameters: Common macro parameters shared across all channels (e.g. #500-#999).
+    - carriers: Physical carrier/workpiece status (e.g. collet clamping, spindle sync).
+    - machine_config: Static machine profile loaded from machines.json.
+    """
+
+    machine_config: Optional[MachineConfig] = field(default=None)
+    physical_axes: Dict[AxisName, Numeric] = field(default_factory=dict)
+    global_parameters: Dict[str, Numeric] = field(default_factory=dict)
+    carriers: Dict[str, Any] = field(default_factory=dict)
+
+    @classmethod
+    def from_config(cls, config: Optional[MachineConfig]) -> "MachineState":
+        if config is None and get_machine_config is not None:
+            config = get_machine_config("FANUC_MILL")
+        initial_axes: Dict[AxisName, Numeric] = {}
+        if config is not None:
+            for ax in getattr(config, "axes", ()):
+                initial_axes[ax] = 0.0
+            simulation = getattr(config, "simulation", None)
+            if isinstance(simulation, dict):
+                for axis, position in simulation.get("initialAxes", {}).items():
+                    try:
+                        initial_axes[axis] = float(position)
+                    except (ValueError, TypeError):
+                        pass
+        return cls(machine_config=config, physical_axes=initial_axes)
+
+    def get_axis(self, name: AxisName) -> Numeric:
+        return self.physical_axes.get(name, 0.0)
+
+    def set_axis(self, name: AxisName, value: Numeric) -> None:
+        try:
+            val = float(value)
+        except (ValueError, TypeError):
+            val = 0.0
+        if name == "A" and getattr(self.machine_config, "a_axis_rollover", False):
+            val = val % 360.0
+            if val < 0:
+                val += 360.0
+        elif name == "B" and getattr(self.machine_config, "b_axis_rollover", False):
+            val = val % 360.0
+            if val < 0:
+                val += 360.0
+        elif name == "C" and getattr(self.machine_config, "c_axis_rollover", False):
+            val = val % 360.0
+            if val < 0:
+                val += 360.0
+        self.physical_axes[name] = val
+
+
+@dataclass
 class CNCState:
-    """Represents the machine state during NC interpretation.
+    """Represents the channel/interpreter state during NC interpretation.
 
     Key pieces of data:
     - modal_groups: mapping of modal group name -> active code (e.g. 'G0', 'G1')
@@ -78,17 +133,31 @@ class CNCState:
     loop_command: List[str] = field(default_factory=list)
     extra: Dict[str, object] = field(default_factory=dict)
     
-    # Machine Configuration
+    # Machine Configuration & MachineState
     machine_config: Optional[MachineConfig] = field(default=None)
+    machine_state: Optional[MachineState] = field(default=None)
 
     def __setattr__(self, name, value):
         object.__setattr__(self, name, value)
         if name == "machine_config":
+            if getattr(self, "machine_state", None) is not None and value is not None:
+                self.machine_state.machine_config = value
+                # Initialize any new axes from config while preserving existing positions
+                for ax in getattr(value, "axes", ()):
+                    if ax not in self.machine_state.physical_axes:
+                        self.machine_state.physical_axes[ax] = self.axes.get(ax, 0.0)
             self._apply_machine_config_defaults()
 
     def __post_init__(self):
         if self.machine_config is None and get_machine_config is not None:
             self.machine_config = get_machine_config("FANUC_MILL")
+
+        if self.machine_state is None:
+            self.machine_state = MachineState.from_config(self.machine_config)
+            # Seed machine_state with any axes explicitly passed to CNCState
+            if self.axes:
+                for ax, pos in self.axes.items():
+                    self.machine_state.set_axis(ax, pos)
 
         self._apply_machine_config_defaults()
 
@@ -122,12 +191,19 @@ class CNCState:
 
     # --- axis helpers -------------------------------------------------
     def get_axis(self, name: AxisName) -> Numeric:
+        # Check if mapped to a physical axis
+        axis_map = self.extra.get("axis_map") if isinstance(self.extra, dict) else None
+        phys = axis_map.get(name) if isinstance(axis_map, dict) else None
+        if phys and self.machine_state is not None and phys in self.machine_state.physical_axes:
+            return self.machine_state.get_axis(phys)
+        if self.machine_state is not None and name in self.machine_state.physical_axes:
+            return self.machine_state.get_axis(name)
         return self.axes.get(name, 0.0)
 
     def set_axis(self, name: AxisName, value: Numeric) -> None:
         try:
             val = float(value)
-        except ValueError:
+        except (ValueError, TypeError):
             val = 0.0
         if name == "A" and getattr(self.machine_config, "a_axis_rollover", False):
             val = val % 360.0
@@ -142,6 +218,21 @@ class CNCState:
             if val < 0:
                 val += 360.0
         self.axes[name] = val
+
+        # Synchronize with shared MachineState
+        if self.machine_state is not None:
+            axis_map = self.extra.get("axis_map") if isinstance(self.extra, dict) else None
+            phys = axis_map.get(name) if isinstance(axis_map, dict) else None
+            if phys:
+                self.machine_state.set_axis(phys, val)
+                self.axes[phys] = val
+            elif name in self.machine_state.physical_axes:
+                self.machine_state.set_axis(name, val)
+                # Also keep any mapped logical alias updated in local axes
+                if isinstance(axis_map, dict):
+                    for logical, physical_axis in axis_map.items():
+                        if physical_axis == name:
+                            self.axes[logical] = val
 
     def update_axes(self, updates: Dict[AxisName, Numeric]) -> None:
         for k, v in updates.items():
@@ -220,11 +311,25 @@ class CNCState:
     # --- parameter helpers -------------------------------------------
     def set_parameter(self, name: str, value: Numeric) -> None:
         try:
-            self.parameters[name] = float(value)
-        except ValueError:
-            self.parameters[name] = 0.0
+            val = float(value)
+        except (ValueError, TypeError):
+            val = 0.0
+        self.parameters[name] = val
+        # If parameter is global (#500-#999), also store in shared MachineState
+        if self.machine_state is not None:
+            clean_name = name.lstrip("#")
+            if clean_name.isdigit() and int(clean_name) >= 500:
+                self.machine_state.global_parameters[name] = val
+                self.machine_state.global_parameters[clean_name] = val
 
     def get_parameter(self, name: str, default: Optional[Numeric] = None) -> Optional[Numeric]:
+        if self.machine_state is not None:
+            clean_name = name.lstrip("#")
+            if clean_name.isdigit() and int(clean_name) >= 500:
+                if name in self.machine_state.global_parameters:
+                    return self.machine_state.global_parameters[name]
+                if clean_name in self.machine_state.global_parameters:
+                    return self.machine_state.global_parameters[clean_name]
         return self.parameters.get(name, default)
 
     # --- coordinate resolution ---------------------------------------
@@ -284,4 +389,4 @@ class CNCState:
         return float(s ** 0.5)
 
 
-__all__ = ["CNCState"]
+__all__ = ["CNCState", "MachineState"]

@@ -317,9 +317,26 @@ class BaseStatefulControl(BaseNCControlInterface):
         if len(init_states) < self.count_of_canals:
             init_states.extend([None] * (self.count_of_canals - len(init_states)))
 
+        # Coordinate shared MachineState across canals if not explicitly isolated
+        from ncplot7py.domain.cnc_state import MachineState
+        shared_machine_state: Optional[MachineState] = None
+        for s in init_states:
+            if s is not None and getattr(s, "machine_state", None) is not None:
+                shared_machine_state = s.machine_state
+                break
+
         self._canals: Dict[int, Any] = {}
         for idx in range(self.count_of_canals):
-            self._canals[idx + 1] = canal_class(names[idx], init_states[idx])
+            st = init_states[idx]
+            if st is None:
+                from ncplot7py.domain.cnc_state import CNCState
+                st = CNCState()
+                init_states[idx] = st
+            if shared_machine_state is None and st.machine_state is not None:
+                shared_machine_state = st.machine_state
+            elif shared_machine_state is not None:
+                st.machine_state = shared_machine_state
+            self._canals[idx + 1] = canal_class(names[idx], st)
 
     def get_canal_name(self, canal: int) -> str:
         c = self._canals.get(canal)

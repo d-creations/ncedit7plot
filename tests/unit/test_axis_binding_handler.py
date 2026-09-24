@@ -105,6 +105,44 @@ class TestAxisBindingHandler(unittest.TestCase):
         self.assertAlmostEqual(state.get_axis("B1"), 30.0)
         self.assertAlmostEqual(state.get_axis("B"), 30.0)
 
+    def test_m171_and_m172_switch_x_and_explicit_axis_assignment(self):
+        state = CNCState(machine_config=get_machine_config("FANUC_STAR_SR20R_IV_B"))
+        canal = UniversalConfigDrivenCanal("C1", init_state=state)
+
+        # In Channel 1 default: X -> X1
+        canal.run_nc_code_list([
+            NCCommandNode(g_code_command={"G0"}, command_parameter={"X": "20.0"}),
+        ])
+        self.assertAlmostEqual(state.get_axis("X1"), 10.0)  # X1 is diameter axis
+
+        # Switch to M171 -> X binds to X2
+        canal.run_nc_code_list([
+            NCCommandNode(command_parameter={"M": "171"}),
+            NCCommandNode(g_code_command={"G0"}, command_parameter={"X": "14.0"}),
+        ])
+        self.assertAlmostEqual(state.get_axis("X2"), 7.0)  # X2 is diameter axis
+
+        # Switch to M172 -> X binds back to X1
+        canal.run_nc_code_list([
+            NCCommandNode(command_parameter={"M": "172"}),
+            NCCommandNode(g_code_command={"G0"}, command_parameter={"X": "30.0"}),
+        ])
+        self.assertAlmostEqual(state.get_axis("X1"), 15.0)
+
+    def test_explicit_axis_assignment_z3_and_x2(self):
+        # On FANUC_STAR_SV20R (which has Z1, Z2, Z3, X1, X2, X3)
+        state = CNCState(machine_config=get_machine_config("FANUC_STAR_SV20R"))
+        canal = UniversalConfigDrivenCanal("C1", init_state=state)
+
+        # Channel 1 executes: G0 X10.0 Z3=40.0 X2=20.0
+        canal.run_nc_code_list([
+            NCCommandNode(g_code_command={"G0"}, command_parameter={"X": "10.0", "Z3": "40.0", "X2": "20.0"}),
+        ])
+
+        self.assertAlmostEqual(state.get_axis("X1"), 5.0)   # Logical X -> X1 (radius)
+        self.assertAlmostEqual(state.get_axis("Z3"), 40.0)  # Direct Z3=
+        self.assertAlmostEqual(state.get_axis("X2"), 10.0)  # Direct X2= (diameter axis -> radius 10)
+
 
 if __name__ == "__main__":
     unittest.main()

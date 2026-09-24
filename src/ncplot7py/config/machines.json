@@ -1140,6 +1140,10 @@
         "defaultByChannel": {
           "1": {"axisId": "X1"},
           "2": {"axisId": "X2"}
+        },
+        "mcodeOverrides": {
+          "M171": {"axisId": "X2"},
+          "M172": {"axisId": "X1"}
         }
       },
       "Y": {
@@ -1230,6 +1234,10 @@
           "1": {"axisId": "X1"},
           "2": {"axisId": "X2"},
           "3": {"axisId": "X3"}
+        },
+        "mcodeOverrides": {
+          "M171": {"axisId": "X2"},
+          "M172": {"axisId": "X1"}
         }
       },
       "Y": {
