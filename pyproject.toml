@@ -5,15 +5,27 @@ build-backend = "hatchling.build"
 [project]
 name = "ncplot7py"
 version = "0.2.0"
-description = "ncplot7py — plotting and utilities for NetCDF data"
+description = "ncplot7py — CNC machine simulation and toolpath generation engine"
 readme = "README.md"
 license = { text = "See LICENSE" }
 authors = [ { name = "d-creations" } ]
 requires-python = ">=3.8"
+keywords = [
+  "cnc",
+  "nc",
+  "plot",
+  "cnc-simulation",
+  "gcode",
+  "toolpath",
+  "fanuc",
+  "siemens",
+]
 dependencies = []
 
 [project.urls]
-Changelog = "https://github.com/d-creations/ncplot7py/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/d-creations/ncedit7plot"
+Repository = "https://github.com/d-creations/ncedit7plot"
+Changelog = "https://github.com/d-creations/ncedit7plot/blob/main/CHANGELOG.md"
 
 
 [tool.testing]
@@ -27,18 +39,15 @@ doctest-command = "python -m doctest -v src/ncplot7py/*.py"
 [project.optional-dependencies]
 plotting = ["matplotlib>=3.0,<4.0"]
 
-[tool.hatch.build]
-packages = ["src/ncplot7py"]
-
 [tool.hatch.build.targets.wheel]
-force-include = { "src/ncplot7py/config/machines.json" = "ncplot7py/config/machines.json" }
+packages = ["src/ncplot7py"]
 
 [tool.hatch.build.targets.sdist]
 include = [
-  "src/ncplot7py",
-  "README.md",
-  "CHANGELOG.md",
-  "LICENSE",
-  "tests",
+  "/src/ncplot7py",
+  "/README.md",
+  "/CHANGELOG.md",
+  "/LICENSE",
+  "/tests",
 ]
  

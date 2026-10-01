@@ -13,6 +13,20 @@ The CGI script in `scripts/cgiserver.cgi` is only an adapter for frontends such 
 - Supports single-channel and multi-channel machine configurations.
 - Exposes machine metadata and editor syntax patterns for frontend integrations.
 
+## Installation
+
+Install from PyPI:
+
+```bash
+pip install ncplot7py
+```
+
+To include optional 3D plotting dependencies (matplotlib):
+
+```bash
+pip install "ncplot7py[plotting]"
+```
+
 ## Python Module Usage
 
 The normal usage is to import the package and run NC code through a configured control and the execution engine.
@@ -39,7 +53,56 @@ errors = engine.errors
 runtime = engine.get_cacluated_runtime()
 ```
 
-See the scripts in `scripts/` for runnable examples.
+## Visualizing Toolpaths with Matplotlib
+
+When installed with the `[plotting]` extra, you can plot the resulting 3D toolpath:
+
+```python
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
+
+from ncplot7py.application.nc_execution import NCExecutionEngine
+from ncplot7py.domain.cnc_state import CNCState
+from ncplot7py.domain.machines import get_machine_config
+from ncplot7py.infrastructure.machines.base_stateful_control import UniversalConfigDrivenControl
+
+program = """
+G90 G54
+G0 X0 Y0 Z10
+G1 X50 Y0 F300
+G1 X50 Y50
+G1 X0 Y50
+G1 X0 Y0
+M30
+"""
+
+state = CNCState(machine_config=get_machine_config("SIEMENS_840DI"))
+control = UniversalConfigDrivenControl(init_nc_states=[state])
+engine = NCExecutionEngine(control)
+
+result = engine.get_Syncro_plot([program])
+
+# Extract X, Y, Z coordinates from the plot segments
+all_x, all_y, all_z = [], [], []
+for canal in result:
+    for line in canal.get("plot", []):
+        all_x.extend(line.get("x", []))
+        all_y.extend(line.get("y", []))
+        all_z.extend(line.get("z", []))
+
+# 3D Toolpath Plot
+fig = plt.figure()
+ax = fig.add_subplot(111, projection="3d")
+ax.plot(all_x, all_y, all_z, label="Toolpath", color="blue")
+ax.set_xlabel("X [mm]")
+ax.set_ylabel("Y [mm]")
+ax.set_zlabel("Z [mm]")
+ax.set_title("NC Toolpath Simulation")
+plt.legend()
+plt.show()
+```
+
+See the scripts in `scripts/` for more runnable examples.
 
 ## Machine Configuration
 
