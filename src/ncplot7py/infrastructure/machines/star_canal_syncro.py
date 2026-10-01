@@ -44,7 +44,7 @@ class CanalSynchro:
                             code = int(nc_command_node1.command_parameter.get('M'))
                         except Exception:
                             code = 0
-                        if code < 999 and (code > 199 or code == 40 or code == 82 or code == 41 or code == 83):
+                        if code < 999 and (code > 199 or code in (40, 41, 82, 83, 171, 172)):
                             wait_c_1 = code
                 if iterator_wait2 < len(nodes2):
                     nc_command_node2: NCCommandNode = nodes2[iterator_wait2]
@@ -53,7 +53,7 @@ class CanalSynchro:
                             code = int(nc_command_node2.command_parameter.get('M'))
                         except Exception:
                             code = 0
-                        if code < 999 and (code > 199 or code == 40 or code == 82 or code == 41 or code == 83):
+                        if code < 999 and (code > 199 or code in (40, 41, 82, 83, 171, 172)):
                             wait_c_2 = code
                 if iterator_wait1 < len(nodes1):
                     time_delta_1 += float(self.tool_paths[0][iterator_wait1][1])
@@ -105,7 +105,7 @@ class CanalSynchro:
                             code = int(nc_command_node1.command_parameter.get('M'))
                         except Exception:
                             code = 0
-                        if code in (83, 82, 40, 41):
+                        if code in (83, 82, 40, 41, 171, 172):
                             wait_c_1 = [code, 12]
                         if code in (131, 133):
                             wait_c_1 = [code, 13]
@@ -128,6 +128,13 @@ class CanalSynchro:
                             code = 0
                         if code in (83, 82, 40, 41):
                             wait_c_2 = [code, 12]
+                        if code in (171, 172):
+                            # Default pairing is 12, or 23 if P is specified as 23/32
+                            p_param = nc_command_node2.command_parameter.get('P')
+                            if p_param in ('23', '32'):
+                                wait_c_2 = [code, 23]
+                            else:
+                                wait_c_2 = [code, 12]
                         if code in (131, 133):
                             wait_c_2 = [code, 13]
                         if code < 999 and code > 199:
@@ -146,6 +153,8 @@ class CanalSynchro:
                             code = int(nc_command_node3.command_parameter.get('M'))
                         except Exception:
                             code = 0
+                        if code in (171, 172):
+                            wait_c_3 = [code, 23]
                         if code in (131, 133):
                             wait_c_3 = [code, 13]
                         if code < 999 and code > 199:

@@ -137,7 +137,7 @@ class TestMachineSetup(unittest.TestCase):
         )
         self.assertEqual(
             HANDLER_REGISTRY["wait_code"],
-            ("ncplot7py.domain.handlers.modal", "ModalHandler"),
+            ("ncplot7py.domain.handlers.wait_code", "WaitCodeHandler"),
         )
 
     def test_siemens_frontend_regex_patterns_include_advanced_commands_and_variables(self):

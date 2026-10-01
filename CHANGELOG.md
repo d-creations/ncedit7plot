@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Added
+- Added dedicated `AxisBindingHandler` for logical-to-physical axis mapping, resolving default channel axis bindings (`X -> X1`, `X -> X2`, `C -> C1`, `B -> B1`) and dynamic M-code overrides (`M171 -> X2/C2`, `M172 -> X1/C1`).
+- Added shared `MachineState` model coordinating physical machine axes and global macro parameters (`#500` - `#999`) across multiple execution canals while preserving per-channel local state in `CNCState`.
+- Added support for explicit multi-character axis assignments with '=' in `FanucCommandParser` (e.g. `Z3=25.0`, `X2=5.0`).
+- Added dedicated `WaitCodeHandler` supporting multi-channel barrier wait codes across machine controls:
+  - Star / Fanuc wait codes (`M200`-`M888`, `M40`, `M41`, `M82`, `M83`, `M131`, `M133`, and `M171`/`M172`) with channel-pairing parameters (`P12`, `P23`, `P32`, `P123`).
+  - Siemens `WAITM(<marker>[, <ch1>[, <ch2>...]])`, `WAITMC`, and `WAITE` statements.
+- Added comprehensive unit and integration tests for multi-channel Star latency alignment, axis switching, shared global parameters, and Siemens `WAITM()` execution.
+
+### Changed
+- Replaced the placeholder `ModalHandler` registration for `"wait_code"` in `HANDLER_REGISTRY` with `WaitCodeHandler`.
+- Added `"axis_binding"` and `"wait_code"` to `supported_gcode_groups` in `machines.json` for multi-channel Star and Siemens machine configurations.
+- Extended `CanalSynchro` to synchronize channels on `M171` and `M172` wait codes across Channel 1 & 2 (Pair 12) or Channel 2 & 3 (Pair 23 / 32).
+- Ensured non-motion barrier wait blocks generate corresponding execution nodes in multi-channel runs so synchronization points align with tool paths.
+
+---
+
 ## [0.2.0] - 2026-09-21
 
 ### Added

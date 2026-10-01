@@ -98,8 +98,16 @@ class ExpressionEvaluator:
                 return 0.0
 
         vm = SafeVarMap()
+        # Merge global machine parameters if available
+        if state.machine_state is not None:
+            for k, v in (state.machine_state.global_parameters or {}).items():
+                vm_key = f"v{k.lstrip('#')}"
+                try:
+                    vm[vm_key] = float(v)
+                except Exception:
+                    vm[vm_key] = 0.0
         for k, v in (state.parameters or {}).items():
-            vm_key = f"v{k}"
+            vm_key = f"v{k.lstrip('#') if isinstance(k, str) else k}"
             try:
                 vm[vm_key] = float(v)
             except Exception:

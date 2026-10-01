@@ -314,23 +314,25 @@ class CNCState:
             val = float(value)
         except (ValueError, TypeError):
             val = 0.0
-        self.parameters[name] = val
+        str_name = str(name)
+        self.parameters[str_name] = val
         # If parameter is global (#500-#999), also store in shared MachineState
         if self.machine_state is not None:
-            clean_name = name.lstrip("#")
+            clean_name = str_name.lstrip("#")
             if clean_name.isdigit() and int(clean_name) >= 500:
-                self.machine_state.global_parameters[name] = val
+                self.machine_state.global_parameters[str_name] = val
                 self.machine_state.global_parameters[clean_name] = val
 
-    def get_parameter(self, name: str, default: Optional[Numeric] = None) -> Optional[Numeric]:
+    def get_parameter(self, name: Any, default: Optional[Numeric] = None) -> Optional[Numeric]:
+        str_name = str(name)
         if self.machine_state is not None:
-            clean_name = name.lstrip("#")
+            clean_name = str_name.lstrip("#")
             if clean_name.isdigit() and int(clean_name) >= 500:
-                if name in self.machine_state.global_parameters:
-                    return self.machine_state.global_parameters[name]
+                if str_name in self.machine_state.global_parameters:
+                    return self.machine_state.global_parameters[str_name]
                 if clean_name in self.machine_state.global_parameters:
                     return self.machine_state.global_parameters[clean_name]
-        return self.parameters.get(name, default)
+        return self.parameters.get(str_name, default)
 
     # --- coordinate resolution ---------------------------------------
     def resolve_target(self, target_spec: Dict[AxisName, Numeric], absolute: bool = True) -> Dict[AxisName, Numeric]:

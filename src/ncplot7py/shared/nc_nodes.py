@@ -45,6 +45,7 @@ class NCCommandNode(BaseNCCommandNode):
         self._execution_step: Optional[int] = None
         self._tool_number: Optional[object] = None
         self._motion_context: Optional[Dict[str, object]] = None
+        self.extra: Dict[str, Any] = {}
 
         # Optional pointers for linked-list style containers
         self._next_ncCode: Optional["NCCommandNode"] = None
@@ -157,6 +158,7 @@ class NCCommandNode(BaseNCCommandNode):
         node._execution_step = self._execution_step
         node._tool_number = self._tool_number
         node._motion_context = deepcopy(self._motion_context)
+        node.extra = deepcopy(getattr(self, "extra", {}))
         return node
 
     def __del__(self) -> None:

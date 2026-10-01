@@ -67,11 +67,11 @@ class VariableHandler(Handler):
                             expr = right.strip()
                             # no need to strip [ ] manually, evaluate handles it
                             val = self._evaluator.evaluate(expr, state)
-                            state.parameters[var_index] = float(val)
+                            state.set_parameter(var_index, float(val))
                         except Exception as e:
                             # silent fallback to 0.0 to preserve current behaviour; in future
                             # we could raise a domain-specific exception with a log_route.
-                            state.parameters[var_index] = 0.0
+                            state.set_parameter(var_index, 0.0)
 
         # Keep track of original values to restore them after downstream handlers
         orig_command_parameter = None

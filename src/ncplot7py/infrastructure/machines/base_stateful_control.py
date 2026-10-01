@@ -284,6 +284,14 @@ class BaseStatefulCanal(BaseNCCanalInterface):
                     projected_points = self._tool_path_compensator.project(pts, self._state)
                     self._tool_path.append((projected_points, dur or 0.0))
                     self._tool_nodes.append(motion_node)
+            else:
+                # For non-motion blocks containing wait codes (e.g. standalone wait codes M300; or WAITM(1, 1, 2)),
+                # create a 0-duration tool_path entry so executed nodes and synchronization pair correctly.
+                wait_info = getattr(node, "extra", {}).get("wait_code") if hasattr(node, "extra") and node.extra else None
+                if wait_info:
+                    non_motion_node = node.copy()
+                    self._tool_path.append(([], 0.0))
+                    self._tool_nodes.append(non_motion_node)
 
             next_node = getattr(node, "_next_ncCode", None)
             if next_node is node:
@@ -401,7 +409,7 @@ HANDLER_REGISTRY = {
     "star_mcode_modal": ("ncplot7py.domain.handlers.star_machine.mcode_modal", "StarModalMCodeHandler"),
     "siemens_mill_mcode_modal": ("ncplot7py.domain.handlers.siemens_mill_cnc.mcode_modal", "SiemensMillModalMCodeHandler"),
     "spindle_speed": ("ncplot7py.domain.handlers.modal", "ModalHandler"),
-    "wait_code": ("ncplot7py.domain.handlers.modal", "ModalHandler"),
+    "wait_code": ("ncplot7py.domain.handlers.wait_code", "WaitCodeHandler"),
     "fanuc_tool_handler": ("ncplot7py.domain.handlers.fanuc_machine.tool_handler", "FanucToolHandler"),
     "siemens_tool_handler": ("ncplot7py.domain.handlers.siemens_machine.tool_handler", "SiemensToolHandler"),
     "star_fanuc_tool_handler": ("ncplot7py.domain.handlers.star_machine.tool_handler", "StarFanucToolHandler"),

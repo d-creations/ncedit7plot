@@ -57,7 +57,7 @@ class SiemensCommandParser(BaseNCCommandParser):
         is_siemens_control = bool(re.match(r"^(FOR|ENDFOR|IF|ELSE|ENDIF|WHILE|ENDWHILE|LOOP|ENDLOOP|REPEAT|GOTOF|GOTOB|GOTO|CASE|ENDCASE)\b", siemens_statement_upper))
         is_siemens_builtin_statement = bool(
             re.match(
-                r"^(CYCLE\d+|POCKET\d+|HOLES\d+|SLOT\d+|LONGHOLE|WORKPIECE|MCALL|MSG|SETAL|STOPRE|NEWCONF|COMPCAD|TRAORI|TRAFOOF|TRANS|ATRANS|ROT|AROT|CTRANS|CROT|FRAME|NULLPUNKT|RET|GETEXET)\b",
+                r"^(CYCLE\d+|POCKET\d+|HOLES\d+|SLOT\d+|LONGHOLE|WORKPIECE|MCALL|MSG|SETAL|STOPRE|NEWCONF|COMPCAD|TRAORI|TRAFOOF|TRANS|ATRANS|ROT|AROT|CTRANS|CROT|FRAME|NULLPUNKT|RET|GETEXET|WAITM|WAITMC|WAITE)\b",
                 siemens_statement_upper,
             )
         )

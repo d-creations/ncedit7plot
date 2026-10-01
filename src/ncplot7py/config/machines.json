@@ -910,6 +910,7 @@
     "axes": ["X", "Y", "Z", "B", "C"],
     "synchronization_strategy": "NONE",
     "supported_gcode_groups": [
+      "wait_code",
       "siemens_alarm",
       "siemens_variables",
       "siemens_flow_control",
@@ -1093,7 +1094,7 @@
     "variable_prefix": "R",
     "tool_range": [0, 9999],
     "tool_selection": {"mode": "direct", "named_tools": true, "offset_address": "D", "offset_scope": "tool"},
-    "supported_gcode_groups": ["siemens_alarm", "siemens_variables", "siemens_flow_control", "siemens_builtins", "siemens_frames", "siemens_transformations", "siemens_path_mode", "siemens_mode", "siemens_named_cycles", "siemens_iso_cycles", "siemens_iso_feed", "siemens_iso_speed", "siemens_iso_plane", "siemens_iso_polar", "siemens_tool_handler", "siemens_iso_tool_length", "siemens_iso_cutter_comp", "siemens_iso_coordinate", "siemens_iso_inch_metric", "siemens_iso_misc", "modal", "siemens_mill_mcode_modal", "cycle_end", "siemens_motion", "motion"],
+    "supported_gcode_groups": ["wait_code", "siemens_alarm", "siemens_variables", "siemens_flow_control", "siemens_builtins", "siemens_frames", "siemens_transformations", "siemens_path_mode", "siemens_mode", "siemens_named_cycles", "siemens_iso_cycles", "siemens_iso_feed", "siemens_iso_speed", "siemens_iso_plane", "siemens_iso_polar", "siemens_tool_handler", "siemens_iso_tool_length", "siemens_iso_cutter_comp", "siemens_iso_coordinate", "siemens_iso_inch_metric", "siemens_iso_misc", "modal", "siemens_mill_mcode_modal", "cycle_end", "siemens_motion", "motion"],
     "default_plane": "G17",
     "default_feed_mode": "FEED_PER_MIN",
     "rapid_feed_rate": 20000.0,
