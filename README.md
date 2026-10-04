@@ -48,7 +48,7 @@ state = CNCState(machine_config=get_machine_config("SIEMENS_840DI"))
 control = UniversalConfigDrivenControl(init_nc_states=[state])
 engine = NCExecutionEngine(control)
 
-result = engine.get_Syncro_plot([program])
+result = engine.get_Syncro_plot([program], synch=False)
 errors = engine.errors
 runtime = engine.get_cacluated_runtime()
 ```
@@ -80,7 +80,7 @@ state = CNCState(machine_config=get_machine_config("SIEMENS_840DI"))
 control = UniversalConfigDrivenControl(init_nc_states=[state])
 engine = NCExecutionEngine(control)
 
-result = engine.get_Syncro_plot([program])
+result = engine.get_Syncro_plot([program], synch=False)
 
 # Extract X, Y, Z coordinates from the plot segments
 all_x, all_y, all_z = [], [], []

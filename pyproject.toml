@@ -7,7 +7,7 @@ name = "ncplot7py"
 version = "0.2.0"
 description = "ncplot7py — CNC machine simulation and toolpath generation engine"
 readme = "README.md"
-license = { text = "See LICENSE" }
+license = "LGPL-3.0"
 authors = [ { name = "d-creations" } ]
 requires-python = ">=3.8"
 keywords = [

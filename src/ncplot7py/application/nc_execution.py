@@ -243,7 +243,7 @@ class NCExecutionEngine:
         return self._lexer
 
     def get_Syncro_plot(
-        self, programs: List[str], synch: bool, channel_number: Optional[int] = None
+        self, programs: List[str], synch: bool = False, channel_number: Optional[int] = None
     ) -> List[Dict]:
         """Create the plot for the given NC `programs`.
 
