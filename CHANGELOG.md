@@ -7,22 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [0.3.0] - 2026-10-05
 
 ### Added
-- Added dedicated `AxisBindingHandler` for logical-to-physical axis mapping, resolving default channel axis bindings (`X -> X1`, `X -> X2`, `C -> C1`, `B -> B1`) and dynamic M-code overrides (`M171 -> X2/C2`, `M172 -> X1/C1`).
-- Added shared `MachineState` model coordinating physical machine axes and global macro parameters (`#500` - `#999`) across multiple execution canals while preserving per-channel local state in `CNCState`.
-- Added support for explicit multi-character axis assignments with '=' in `FanucCommandParser` (e.g. `Z3=25.0`, `X2=5.0`).
-- Added dedicated `WaitCodeHandler` supporting multi-channel barrier wait codes across machine controls:
-  - Star / Fanuc wait codes (`M200`-`M888`, `M40`, `M41`, `M82`, `M83`, `M131`, `M133`, and `M171`/`M172`) with channel-pairing parameters (`P12`, `P23`, `P32`, `P123`).
-  - Siemens `WAITM(<marker>[, <ch1>[, <ch2>...]])`, `WAITMC`, and `WAITE` statements.
-- Added comprehensive unit and integration tests for multi-channel Star latency alignment, axis switching, shared global parameters, and Siemens `WAITM()` execution.
+- Added per-motion `machiningMode` (`'turning'`, `'milling'`, `'unknown'`) directly to motion segments in the execution engine and CGI response.
+- Added channel-scoped `machining_mode` and `spindle_state` tracking to `CNCState`.
+- Added dedicated `StarSpindleHandler` (`"star_spindle"`) for STAR turning machines:
+  - Main spindle rotation (`M3`, `M4`) sets `turning` mode and records active state in `spindle_state["main"]`.
+  - Spindle stop (`M5`) deactivates the main spindle.
+  - Power-driven tools (`M36`/`M37` for Tool 1, `M46`/`M47` for Tool 2, `M56`/`M57` for Tool 3) set `milling` mode and record active state in `spindle_state["PowerDrivenTools"]`.
+  - `M38`, `M48`, and `M58` stop the respective power-driven tool.
+- Added dedicated `FanucTurnSpindleHandler` (`"fanuc_turn_spindle"`) for FANUC turning machines:
+  - Turning spindle rotation (`M3`, `M4`) sets `turning` mode.
+  - Spindle stop (`M5`) marks the turning spindle as stopped and transitions subsequent operations to `milling` mode.
+  - Subsequent `M3`/`M4` returns the machine to `turning` mode.
+- Updated FANUC Mill and Siemens Mill modal M-code handlers to always set `milling` mode and track `spindle_state["main"]`.
+- Added `spindles` definition mapping in `MachineConfig` and `machines.json` for turning and milling profiles.
+- Added keywords for `M4`, `M36`-`M38`, `M46`-`M48`, and `M56`-`M58`.
 
 ### Changed
-- Replaced the placeholder `ModalHandler` registration for `"wait_code"` in `HANDLER_REGISTRY` with `WaitCodeHandler`.
-- Added `"axis_binding"` and `"wait_code"` to `supported_gcode_groups` in `machines.json` for multi-channel Star and Siemens machine configurations.
-- Extended `CanalSynchro` to synchronize channels on `M171` and `M172` wait codes across Channel 1 & 2 (Pair 12) or Channel 2 & 3 (Pair 23 / 32).
-- Ensured non-motion barrier wait blocks generate corresponding execution nodes in multi-channel runs so synchronization points align with tool paths.
+- Pruned redundant internal kinematics parameters (`channelId`, `startAxes`, `endAxes`, `toolOffset`, and `motionContext` wrapper) from client segment responses in `cgiserver.cgi`, providing `machiningMode` directly on each segment.
+- Updated `docs/CGI_API.md` with the simplified segment contract.
 
 ---
 

@@ -197,6 +197,7 @@ class MachineConfig:
     axis_bindings: Dict[str, Any] = field(default_factory=dict)
     axes: Tuple[str, ...] = ()
     simulation: Optional[Dict[str, Any]] = None
+    spindles: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         if type(self.channels) is not int or not 1 <= self.channels <= 3:
@@ -336,6 +337,7 @@ def load_machine_configs():
                     axis_bindings=deepcopy(val.get('axis_bindings', {})),
                     axes=val.get('axes', []),
                     simulation=val.get('simulation'),
+                    spindles=deepcopy(val.get('spindles', {})),
                 )
                 
         # Second pass: resolve aliases

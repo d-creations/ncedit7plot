@@ -24,6 +24,37 @@ class StarModalMCodeHandler(BaseModalMCodeHandler):
         return self.next_handler.handle(reset_node, state)
 
     def _apply_machine_specific_state(self, m_code, state):
+        if m_code in {"M3", "M4"}:
+            state.machining_mode = "turning"
+            state.spindle_state["main"] = {
+                "direction": m_code,
+                "active": True,
+                "speed": state.spindle_speed,
+            }
+        elif m_code == "M5":
+            state.spindle_state["main"] = {
+                "direction": "M5",
+                "active": False,
+                "speed": 0.0,
+            }
+        elif m_code in {"M36", "M37", "M46", "M47", "M56", "M57"}:
+            state.machining_mode = "milling"
+            tool_name = "PowerDrivenTool1" if m_code in {"M36", "M37"} else ("PowerDrivenTool2" if m_code in {"M46", "M47"} else "PowerDrivenTool3")
+            state.spindle_state["PowerDrivenTools"] = {
+                "tool": tool_name,
+                "direction": m_code,
+                "active": True,
+                "speed": state.spindle_speed,
+            }
+        elif m_code in {"M38", "M48", "M58"}:
+            tool_name = "PowerDrivenTool1" if m_code == "M38" else ("PowerDrivenTool2" if m_code == "M48" else "PowerDrivenTool3")
+            state.spindle_state["PowerDrivenTools"] = {
+                "tool": tool_name,
+                "direction": m_code,
+                "active": False,
+                "speed": 0.0,
+            }
+
         if m_code == "M8":
             state.extra["star.c_axis_mode"] = "positionControlled"
         elif m_code == "M9":

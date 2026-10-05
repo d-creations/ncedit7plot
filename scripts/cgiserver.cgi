@@ -149,6 +149,14 @@ def build_segments_from_engine_output(canal_output: Dict[str, Any]) -> Dict[str,
         else:
             segment_type = "RAPID" if (not t or float(t) == 0) else "LINEAR"
 
+        machining_mode = entry.get("machiningMode")
+        if not machining_mode:
+            motion_ctx = entry.get("motionContext")
+            if isinstance(motion_ctx, dict):
+                machining_mode = motion_ctx.get("machiningMode")
+        if not machining_mode:
+            machining_mode = "unknown"
+
         seg = {
             "type": segment_type,
             "geometry": geometry,
@@ -157,7 +165,7 @@ def build_segments_from_engine_output(canal_output: Dict[str, Any]) -> Dict[str,
             "lineNumber": entry.get("lineNumber") if entry.get("lineNumber") is not None else (executed_node_lines[idx] if idx < len(executed_node_lines) else None),
             "executionStep": entry.get("executionStep"),
             "toolNumber": entry.get("toolNumber", "unknown"),
-            "motionContext": entry.get("motionContext"),
+            "machiningMode": machining_mode,
             "poses": entry.get("poses"),
             "points": points,
         }
@@ -225,6 +233,7 @@ def mock_parse_nc_program(program: str, machine_name: str) -> Dict[str, Any]:
                 "lineNumber": i + 1,
                 "executionStep": i,
                 "toolNumber": "unknown",
+                "machiningMode": "unknown",
                 "points": [
                     current_pos.copy(),
                     new_pos.copy()

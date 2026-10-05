@@ -162,6 +162,7 @@ Each item in a canal's `segments` list includes motion semantics separately from
   "lineNumber": 10,
   "executionStep": 5,
   "toolNumber": 2,
+  "machiningMode": "turning",
   "points": [{"x": 0.0, "y": 0.0, "z": 0.0}]
 }
 ```
@@ -171,6 +172,12 @@ Each item in a canal's `segments` list includes motion semantics separately from
 - `sourceCode` is the effective modal interpolation code (`G00`, `G01`, `G02`, or `G03`) when known.
 - `executionStep` is the zero-based executed-command occurrence in its channel. Generated cycle segments from the same command share one step.
 - `toolNumber` is the active numeric tool, named-tool string, or `"unknown"` when no active tool can be determined.
+- `machiningMode`: `'turning' | 'milling' | 'unknown'`. Identifies the machining mode directly on each segment separately from kinematics/movement (`RAPID`, `FEED`, `ARC`).
+  - STAR turning: `M3`/`M4` sets turning mode; power-driven tools (`M36`/`M37`, `M46`/`M47`, `M56`/`M57`) set milling mode; `M5` stops main spindle, `M38`/`M48`/`M58` stop live tools.
+  - FANUC turning: `M3`/`M4` sets turning mode; `M5` stops the turning spindle and subsequent operations switch to milling mode; subsequent `M3`/`M4` switches back to turning.
+  - FANUC milling and Siemens milling: `M3`/`M4`/`M5` is always milling mode.
+  - Older responses or segments executed before any mode-switch command report `"unknown"` (never defaulted to turning).
+  - The mode strictly follows execution order (including inside subprograms and loops).
 - `type` remains the compatibility display value: `RAPID` for rapid traversal, otherwise the geometry value. It is `UNKNOWN` when the engine marks a generated path as having no single motion classification.
 - The semantic fields can be `null` for legacy engine output or compound generated paths that do not have one motion classification.
 - Implemented FANUC turning drilling cycles (`G83`, `G84`, `G85`, `G87`, and `G89`) are expanded into separate primitive segments. Every approach/retract segment has `geometry: "LINEAR"`, `traversal: "RAPID"`, and `sourceCode: "G00"`; every cutting/tapping/boring segment has `geometry: "LINEAR"`, `traversal: "FEED"`, and `sourceCode: "G01"`.

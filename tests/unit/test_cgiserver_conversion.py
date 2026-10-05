@@ -281,6 +281,27 @@ class TestCgiServerConversion(unittest.TestCase):
                 self.assertAlmostEqual(canal["namedVariables"]["RND"], 12.0)
                 self.assertIn(5, canal["executedNodeLines"])
 
+    def test_cgi_prunes_raw_axes_and_offsets_from_motion_context(self):
+        cgiserver = _load_cgiserver_module()
+        result = cgiserver.build_segments_from_engine_output({
+            "plot": [
+                {
+                    "x": [0.0, 1.0], "y": [0.0, 0.0], "z": [0.0, 0.0], "t": 1.0,
+                    "geometry": "LINEAR", "traversal": "FEED", "sourceCode": "G01",
+                    "motionContext": {
+                        "channelId": "1",
+                        "startAxes": {"X": 0.0, "Y": 0.0, "Z": 0.0},
+                        "endAxes": {"X": 1.0, "Y": 0.0, "Z": 0.0},
+                        "toolOffset": {"radiusMode": "OFF"},
+                        "machiningMode": "turning",
+                    },
+                }
+            ]
+        })
+        seg = result["segments"][0]
+        self.assertEqual(seg["machiningMode"], "turning")
+        self.assertNotIn("motionContext", seg)
+
 
 if __name__ == "__main__":
     unittest.main()

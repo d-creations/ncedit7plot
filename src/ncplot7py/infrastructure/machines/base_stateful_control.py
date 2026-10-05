@@ -96,11 +96,15 @@ class BaseStatefulCanal(BaseNCCanalInterface):
             "tipOrientation": compensation.tip_orientation,
             "edgeNumber": compensation.edge_number,
         }
+        machining_mode = getattr(self._state, "machining_mode", "unknown")
+        if not machining_mode:
+            machining_mode = "unknown"
         context = {
             "channelId": str(self._name),
             "startAxes": dict(start_axes) if start_axes is not None else dict(axes),
             "endAxes": axes,
             "toolOffset": {key: value for key, value in tool_offset.items() if value is not None},
+            "machiningMode": machining_mode,
         }
         c_axis_mode = self._state.extra.get("star.c_axis_mode") or self._state.extra.get("siemens.c_axis_mode")
         if c_axis_mode:
@@ -408,6 +412,8 @@ HANDLER_REGISTRY = {
     "fanuc_turn_mcode_modal": ("ncplot7py.domain.handlers.fanuc_turn_cnc.mcode_modal", "FanucTurnModalMCodeHandler"),
     "star_mcode_modal": ("ncplot7py.domain.handlers.star_machine.mcode_modal", "StarModalMCodeHandler"),
     "siemens_mill_mcode_modal": ("ncplot7py.domain.handlers.siemens_mill_cnc.mcode_modal", "SiemensMillModalMCodeHandler"),
+    "star_spindle": ("ncplot7py.domain.handlers.star_machine.spindle_handler", "StarSpindleHandler"),
+    "fanuc_turn_spindle": ("ncplot7py.domain.handlers.fanuc_turn_cnc.spindle_handler", "FanucTurnSpindleHandler"),
     "spindle_speed": ("ncplot7py.domain.handlers.modal", "ModalHandler"),
     "wait_code": ("ncplot7py.domain.handlers.wait_code", "WaitCodeHandler"),
     "fanuc_tool_handler": ("ncplot7py.domain.handlers.fanuc_machine.tool_handler", "FanucToolHandler"),

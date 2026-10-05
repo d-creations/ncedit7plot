@@ -123,6 +123,8 @@ class CNCState:
     tool_quadrant: Optional[int] = None
     tool_path_mode: str = "effective"
     tool_compensation: ToolCompensationState = field(default_factory=ToolCompensationState)
+    machining_mode: str = "unknown"
+    spindle_state: Dict[str, Any] = field(default_factory=dict)
 
     # Program parameters / variables (#500 style) and DDDP table if present
     parameters: Dict[str, Numeric] = field(default_factory=dict)
@@ -307,6 +309,18 @@ class CNCState:
 
     def get_modal(self, group: str) -> Optional[str]:
         return self.modal_groups.get(group)
+
+    def set_machining_mode(self, mode: str) -> None:
+        """Set the active machining mode: 'turning', 'milling', or 'unknown'."""
+        normalized = str(mode or "").strip().lower()
+        if normalized in {"turning", "milling", "unknown"}:
+            self.machining_mode = normalized
+        else:
+            self.machining_mode = "unknown"
+
+    def get_machining_mode(self) -> str:
+        """Return the current channel machining mode."""
+        return self.machining_mode or "unknown"
 
     # --- parameter helpers -------------------------------------------
     def set_parameter(self, name: str, value: Numeric) -> None:

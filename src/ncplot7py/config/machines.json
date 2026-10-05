@@ -170,6 +170,7 @@
       "fanuc_turn_units",
       "modal",
       "star_mcode_modal",
+      "star_spindle",
       "group_0_coordinate_set",
       "group_2_speed_mode",
       "star_spindle_fluctuation",
@@ -316,7 +317,7 @@
           "m_codes_range": {"pattern": "M(2[0-9]{2}|[3-8][0-8]{2})", "range": {"min": 200, "max": 888}},
           "special_m_codes": ["M82", "M83", "M20"],
           "g_codes": ["G255", "G266"],
-          "program_control": ["M0", "M1", "M3", "M5", "M30"]
+          "program_control": ["M0", "M1", "M3", "M4", "M5", "M30"]
         }
       }
     },
@@ -336,6 +337,7 @@
       "fanuc_turn_units",
       "modal",
       "star_mcode_modal",
+      "star_spindle",
       "group_21_polar",
       "group_0_coordinate_set",
       "group_2_speed_mode",
@@ -465,7 +467,7 @@
           "m_codes_range": {"pattern": "M(2[0-9]{2}|[3-8][0-8]{2})", "range": {"min": 200, "max": 888}},
           "special_m_codes": ["M82", "M83", "M20"],
           "g_codes": ["G255", "G266"],
-          "program_control": ["M0", "M1", "M3", "M5", "M30"]
+          "program_control": ["M0", "M1", "M3", "M4", "M5", "M30"]
         }
       }
     },
@@ -485,6 +487,7 @@
       "fanuc_turn_units",
       "modal",
       "star_mcode_modal",
+      "star_spindle",
       "group_0_coordinate_set",
       "group_2_speed_mode",
       "star_spindle_fluctuation",
@@ -609,7 +612,7 @@
           "m_codes_range": {"pattern": "M(2[0-9]{2}|[3-8][0-8]{2})", "range": {"min": 200, "max": 888}},
           "special_m_codes": ["M82", "M83", "M20"],
           "g_codes": ["G255", "G266"],
-          "program_control": ["M0", "M1", "M3", "M5", "M30"]
+          "program_control": ["M0", "M1", "M3", "M4", "M5", "M30"]
         }
       }
     },
@@ -629,6 +632,7 @@
       "fanuc_turn_units",
       "modal",
       "star_mcode_modal",
+      "star_spindle",
       "group_21_polar",
       "group_0_coordinate_set",
       "group_2_speed_mode",
@@ -754,7 +758,7 @@
           "m_codes_range": {"pattern": "M(2[0-9]{2}|[3-8][0-8]{2})", "range": {"min": 200, "max": 888}},
           "special_m_codes": ["M82", "M83", "M20"],
           "g_codes": ["G255", "G266"],
-          "program_control": ["M0", "M1", "M3", "M5", "M30"]
+          "program_control": ["M0", "M1", "M3", "M4", "M5", "M30"]
         }
       }
     },
@@ -774,6 +778,7 @@
       "fanuc_turn_units",
       "modal",
       "fanuc_turn_mcode_modal",
+      "fanuc_turn_spindle",
       "group_16_plane",
       "fanuc_coordinate_rotation",
       "group_21_polar",
@@ -1176,7 +1181,7 @@
       }
     },
     "synchronization_strategy": "STAR_WAIT",
-    "supported_gcode_groups": ["axis_binding", "fanuc_alarm", "variable", "control_flow", "star_fanuc_tool_handler", "precheck", "fanuc_turn_spindle_limit", "fanuc_turn_units", "modal", "star_mcode_modal", "group_0_coordinate_set", "group_2_speed_mode", "star_spindle_fluctuation", "group_5_feed_mode", "group_16_plane", "fanuc_coordinate_rotation", "group_21_polar", "fanuc_cutter_comp", "cornering", "wait_code", "spindle_speed", "cycle_end", "star_automatic_coordinate", "star_g266", "star_b1_tilting", "star_g161_step_cycle", "fanuc_g92_threading", "fanuc_g76_threading", "fanuc_g36_circular_threading", "fanuc_turn_drilling_cycles", "motion"],
+    "supported_gcode_groups": ["axis_binding", "fanuc_alarm", "variable", "control_flow", "star_fanuc_tool_handler", "precheck", "fanuc_turn_spindle_limit", "fanuc_turn_units", "modal", "star_mcode_modal", "star_spindle", "group_0_coordinate_set", "group_2_speed_mode", "star_spindle_fluctuation", "group_5_feed_mode", "group_16_plane", "fanuc_coordinate_rotation", "group_21_polar", "fanuc_cutter_comp", "cornering", "wait_code", "spindle_speed", "cycle_end", "star_automatic_coordinate", "star_g266", "star_b1_tilting", "star_g161_step_cycle", "fanuc_g92_threading", "fanuc_g76_threading", "fanuc_g36_circular_threading", "fanuc_turn_drilling_cycles", "motion"],
     "default_plane": "G18",
     "default_feed_mode": "FEED_PER_REV",
     "rapid_feed_rate": 20000.0,
@@ -1267,7 +1272,7 @@
       }
     },
     "synchronization_strategy": "STAR_WAIT",
-    "supported_gcode_groups": ["axis_binding", "fanuc_alarm", "variable", "control_flow", "star_fanuc_tool_handler", "precheck", "fanuc_turn_spindle_limit", "fanuc_turn_units", "modal", "star_mcode_modal", "group_0_coordinate_set", "group_2_speed_mode", "star_spindle_fluctuation", "group_5_feed_mode", "group_16_plane", "fanuc_coordinate_rotation", "group_21_polar", "fanuc_cutter_comp", "cornering", "wait_code", "spindle_speed", "cycle_end", "star_automatic_coordinate", "star_g266", "star_g161_step_cycle", "fanuc_g92_threading", "fanuc_g76_threading", "fanuc_g36_circular_threading", "fanuc_turn_drilling_cycles", "motion"],
+    "supported_gcode_groups": ["axis_binding", "fanuc_alarm", "variable", "control_flow", "star_fanuc_tool_handler", "precheck", "fanuc_turn_spindle_limit", "fanuc_turn_units", "modal", "star_mcode_modal", "star_spindle", "group_0_coordinate_set", "group_2_speed_mode", "star_spindle_fluctuation", "group_5_feed_mode", "group_16_plane", "fanuc_coordinate_rotation", "group_21_polar", "fanuc_cutter_comp", "cornering", "wait_code", "spindle_speed", "cycle_end", "star_automatic_coordinate", "star_g266", "star_g161_step_cycle", "fanuc_g92_threading", "fanuc_g76_threading", "fanuc_g36_circular_threading", "fanuc_turn_drilling_cycles", "motion"],
     "default_plane": "G18",
     "default_feed_mode": "FEED_PER_REV",
     "rapid_feed_rate": 20000.0,
@@ -1322,7 +1327,7 @@
     "tool_selection": {"mode": "star", "tool_digits": [3, 4], "offset_digits": [1, 2], "named_tools": false, "offset_scope": "global"},
     "axis_bindings": {"C": {"defaultByChannel": {"1": {"targetCarrierId": "mainSpindle", "axisId": "C1"}, "2": {"targetCarrierId": "subSpindle", "axisId": "C2"}}, "mcodeOverrides": {"M171": {"targetCarrierId": "subSpindle", "axisId": "C2"}, "M172": {"targetCarrierId": "mainSpindle", "axisId": "C1"}}}},
     "synchronization_strategy": "STAR_WAIT",
-    "supported_gcode_groups": ["axis_binding", "fanuc_alarm", "variable", "control_flow", "star_fanuc_tool_handler", "precheck", "fanuc_turn_spindle_limit", "fanuc_turn_units", "modal", "star_mcode_modal", "group_0_coordinate_set", "group_2_speed_mode", "star_spindle_fluctuation", "group_5_feed_mode", "group_16_plane", "fanuc_coordinate_rotation", "fanuc_cutter_comp", "cornering", "wait_code", "spindle_speed", "cycle_end", "star_automatic_coordinate", "star_g266", "fanuc_g92_threading", "fanuc_g76_threading", "fanuc_g36_circular_threading", "fanuc_turn_drilling_cycles", "motion"],
+    "supported_gcode_groups": ["axis_binding", "fanuc_alarm", "variable", "control_flow", "star_fanuc_tool_handler", "precheck", "fanuc_turn_spindle_limit", "fanuc_turn_units", "modal", "star_mcode_modal", "star_spindle", "group_0_coordinate_set", "group_2_speed_mode", "star_spindle_fluctuation", "group_5_feed_mode", "group_16_plane", "fanuc_coordinate_rotation", "fanuc_cutter_comp", "cornering", "wait_code", "spindle_speed", "cycle_end", "star_automatic_coordinate", "star_g266", "fanuc_g92_threading", "fanuc_g76_threading", "fanuc_g36_circular_threading", "fanuc_turn_drilling_cycles", "motion"],
     "default_plane": "G18",
     "default_feed_mode": "FEED_PER_REV",
     "rapid_feed_rate": 20000.0,
