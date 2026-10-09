@@ -135,11 +135,14 @@
     },
     "simulation": {
       "schemaVersion": 1,
-      "revision": 1,
+      "revision": 2,
       "modelId": "MILL_DEMO",
       "displayName": "MILL DEMO",
       "fidelity": "demo",
       "poseContract": "workpiece-tool-reference-v1",
+      "stockBindings": [
+        {"frameId": "workpiece:tableBC", "position": [0, 0, 0], "rotation": [0, 0, 0], "spindleOrigin": [0, 0, 0], "spindleAxis": [0, 0, 1]}
+      ],
       "carriers": [
         {"id": "millingSpindle", "role": "tool", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": []},
         {"id": "tableBC", "role": "workpiece", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": [{"axisId": "B", "axis": [0, 1, 0], "sign": 1, "zeroDegrees": 0}, {"axisId": "C", "axis": [0, 0, 1], "sign": 1, "zeroDegrees": 0}]}
@@ -1029,11 +1032,14 @@
     },
     "simulation": {
       "schemaVersion": 1,
-      "revision": 1,
+      "revision": 2,
       "modelId": "MILL_DEMO",
       "displayName": "MILL DEMO",
       "fidelity": "demo",
       "poseContract": "workpiece-tool-reference-v1",
+      "stockBindings": [
+        {"frameId": "workpiece:tableBC", "position": [0, 0, 0], "rotation": [0, 0, 0], "spindleOrigin": [0, 0, 0], "spindleAxis": [0, 0, 1]}
+      ],
       "carriers": [
         {"id": "millingSpindle", "role": "tool", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": []},
         {"id": "tableBC", "role": "workpiece", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": [{"axisId": "B", "axis": [0, 1, 0], "sign": 1, "zeroDegrees": 0}, {"axisId": "C", "axis": [0, 0, 1], "sign": 1, "zeroDegrees": 0}]}
@@ -1074,11 +1080,14 @@
     "rapid_feed_rate": 20000.0,
     "simulation": {
       "schemaVersion": 1,
-      "revision": 1,
+      "revision": 2,
       "modelId": "MILL_DEMO",
       "displayName": "MILL DEMO",
       "fidelity": "demo",
       "poseContract": "workpiece-tool-reference-v1",
+      "stockBindings": [
+        {"frameId": "workpiece:tableBC", "position": [0, 0, 0], "rotation": [0, 0, 0], "spindleOrigin": [0, 0, 0], "spindleAxis": [0, 0, 1]}
+      ],
       "carriers": [
         {"id": "millingSpindle", "role": "tool", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": []},
         {"id": "tableBC", "role": "workpiece", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": [{"axisId": "B", "axis": [0, 1, 0], "sign": 1, "zeroDegrees": 0}, {"axisId": "C", "axis": [0, 0, 1], "sign": 1, "zeroDegrees": 0}]}
@@ -1105,11 +1114,14 @@
     "rapid_feed_rate": 20000.0,
     "simulation": {
       "schemaVersion": 1,
-      "revision": 1,
+      "revision": 2,
       "modelId": "MILL_DEMO",
       "displayName": "MILL DEMO",
       "fidelity": "demo",
       "poseContract": "workpiece-tool-reference-v1",
+      "stockBindings": [
+        {"frameId": "workpiece:tableBC", "position": [0, 0, 0], "rotation": [0, 0, 0], "spindleOrigin": [0, 0, 0], "spindleAxis": [0, 0, 1]}
+      ],
       "carriers": [
         {"id": "millingSpindle", "role": "tool", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": []},
         {"id": "tableBC", "role": "workpiece", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": [{"axisId": "B", "axis": [0, 1, 0], "sign": 1, "zeroDegrees": 0}, {"axisId": "C", "axis": [0, 0, 1], "sign": 1, "zeroDegrees": 0}]}
@@ -1191,11 +1203,15 @@
     "step_cycle_pro_enabled": true,
     "simulation": {
       "schemaVersion": 1,
-      "revision": 1,
+      "revision": 2,
       "modelId": "STAR_SR20R_IV_B",
       "displayName": "STAR SR-20R IV Type B",
       "fidelity": "configured",
       "poseContract": "workpiece-tool-reference-v1",
+      "stockBindings": [
+        {"frameId": "workpiece:mainSpindle", "position": [0, 0, 0], "rotation": [0, 0, 0], "spindleOrigin": [0, 0, 0], "spindleAxis": [0, 0, 1]},
+        {"frameId": "workpiece:subSpindle", "position": [0, 0, 0], "rotation": [0, 0, 0], "spindleOrigin": [0, 0, 0], "spindleAxis": [0, 0, 1]}
+      ],
       "carriers": [
         {"id": "gangToolPost", "role": "tool", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": []},
         {"id": "tiltingToolUnit", "role": "tool", "referenceOrientationDegrees": [0, 90, 0], "rotationChain": [{"axisId": "B1", "axis": [0, 1, 0], "sign": 1, "zeroDegrees": 90}]},
@@ -1282,11 +1298,15 @@
     "step_cycle_pro_enabled": true,
     "simulation": {
       "schemaVersion": 1,
-      "revision": 1,
+      "revision": 2,
       "modelId": "STAR_SV20R",
       "displayName": "STAR SV-20R",
       "fidelity": "configured",
       "poseContract": "workpiece-tool-reference-v1",
+      "stockBindings": [
+        {"frameId": "workpiece:mainSpindle", "position": [0, 0, 0], "rotation": [0, 0, 0], "spindleOrigin": [0, 0, 0], "spindleAxis": [0, 0, 1]},
+        {"frameId": "workpiece:subSpindle", "position": [0, 0, 0], "rotation": [0, 0, 0], "spindleOrigin": [0, 0, 0], "spindleAxis": [0, 0, 1]}
+      ],
       "carriers": [
         {"id": "gangToolPost", "role": "tool", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": []},
         {"id": "backToolUnit", "role": "tool", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": []},
@@ -1336,11 +1356,15 @@
     "circular_threading_enabled": true,
     "simulation": {
       "schemaVersion": 1,
-      "revision": 1,
+      "revision": 2,
       "modelId": "STAR_SG42",
       "displayName": "STAR SG-42",
       "fidelity": "configured",
       "poseContract": "workpiece-tool-reference-v1",
+      "stockBindings": [
+        {"frameId": "workpiece:mainSpindle", "position": [0, 0, 0], "rotation": [0, 0, 0], "spindleOrigin": [0, 0, 0], "spindleAxis": [0, 0, 1]},
+        {"frameId": "workpiece:subSpindle", "position": [0, 0, 0], "rotation": [0, 0, 0], "spindleOrigin": [0, 0, 0], "spindleAxis": [0, 0, 1]}
+      ],
       "carriers": [
         {"id": "sharedTurret", "role": "tool", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": []},
         {"id": "mainSpindle", "role": "workpiece", "referenceOrientationDegrees": [0, 0, 0], "rotationChain": [{"axisId": "C1", "axis": [0, 0, 1], "sign": 1, "zeroDegrees": 0}]},

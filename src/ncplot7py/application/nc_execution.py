@@ -413,21 +413,6 @@ class NCExecutionEngine:
                     if tool_number is None:
                         tool_number = "unknown"
 
-                motion_ctx = getattr(motion_node, "motion_context", None) if canal_index < len(nodes) and len(nodes[canal_index]) > len(lines) else None
-                physical_channel = canal_index + 1
-                pose_channel = channel_number if channel_number is not None and len(tool_paths) == 1 else physical_channel
-                state = self.cnc_control.get_nc_state(physical_channel)
-                channel_mode = getattr(state, "machining_mode", "unknown") if state is not None else "unknown"
-                if motion_ctx is None:
-                    context = {
-                        "channelId": str(pose_channel),
-                        "machiningMode": channel_mode or "unknown",
-                    }
-                else:
-                    context = dict(motion_ctx)
-                    if "machiningMode" not in context or not context["machiningMode"]:
-                        context["machiningMode"] = channel_mode or "unknown"
-
                 plot_line = {
                     "x": x,
                     "y": y,
@@ -439,10 +424,14 @@ class NCExecutionEngine:
                     "sourceCode": motion_source_code,
                     "executionStep": execution_step,
                     "toolNumber": tool_number,
-                    "machiningMode": context.get("machiningMode", "unknown") or "unknown",
+                    "motionContext": getattr(motion_node, "motion_context", None) if canal_index < len(nodes) and len(nodes[canal_index]) > len(lines) else None,
                 }
+                physical_channel = canal_index + 1
+                pose_channel = channel_number if channel_number is not None and len(tool_paths) == 1 else physical_channel
+                state = self.cnc_control.get_nc_state(physical_channel)
                 pose_tools = getattr(state, "extra", {}).get("pose_tools", {}) if state is not None else {}
                 config = getattr(state, "machine_config", None) if state is not None else None
+                context = plot_line["motionContext"]
                 tool = pose_tools.get(tool_number) if isinstance(pose_tools, dict) else None
                 if config is not None and getattr(config, "simulation", None) and tool is not None:
                     try:

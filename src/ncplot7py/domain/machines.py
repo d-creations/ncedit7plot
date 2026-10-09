@@ -53,8 +53,9 @@ def validate_simulation_config(value: Any, channels: int, axes: tuple[str, ...])
         "schemaVersion", "revision", "modelId", "displayName", "fidelity",
         "poseContract", "carriers", "toolMounts",
     }
-    if not isinstance(value, dict) or set(value) not in (required, required | {"initialAxes"}):
-        raise ValueError(f"Expected these fields: {sorted(required)} with optional initialAxes")
+    optional = {"initialAxes", "stockBindings"}
+    if not isinstance(value, dict) or not required.issubset(value) or not set(value).issubset(required | optional):
+        raise ValueError(f"Expected these fields: {sorted(required)} with optional initialAxes and stockBindings")
     config = value
     if type(config["schemaVersion"]) is not int or config["schemaVersion"] != 1:
         raise ValueError("Unsupported simulation schemaVersion")
@@ -97,6 +98,22 @@ def validate_simulation_config(value: Any, channels: int, axes: tuple[str, ...])
             if type(joint["sign"]) is not int or joint["sign"] not in (-1, 1):
                 raise ValueError("Rotation sign must be -1 or 1")
             _simulation_vector([joint["zeroDegrees"], 0, 0])
+    bindings = config.get("stockBindings", [])
+    if not isinstance(bindings, list) or len(bindings) > 64:
+        raise ValueError("Invalid stockBindings list")
+    binding_frames = set()
+    for binding in bindings:
+        _simulation_object(binding, {"frameId", "position", "rotation", "spindleOrigin", "spindleAxis"})
+        frame = _simulation_text(binding["frameId"])
+        if frame not in {f"workpiece:{identity}" for identity, role in roles.items() if role == "workpiece"} or frame in binding_frames:
+            raise ValueError("Stock binding requires a unique workpiece frame")
+        binding_frames.add(frame)
+        for key in ("position", "rotation", "spindleOrigin", "spindleAxis"):
+            vector = _simulation_vector(binding[key])
+            if any(abs(component) > 1_000_000 for component in vector):
+                raise ValueError("Stock binding vector exceeds supported bounds")
+        if abs(math.hypot(*binding["spindleAxis"]) - 1) > 1e-6:
+            raise ValueError("Stock spindle axis must be a unit vector")
     mounts = config["toolMounts"]
     if not isinstance(mounts, list) or len(mounts) > 4096:
         raise ValueError("Invalid toolMounts list")
