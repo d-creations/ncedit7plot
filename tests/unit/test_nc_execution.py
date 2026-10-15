@@ -210,7 +210,30 @@ class TestNCExecutionEngine(unittest.TestCase):
         self.assertEqual(canal["programExec"], [0, 1])
         for entry in plot:
             self.assertEqual(entry["machiningMode"], "unknown")
-            self.assertNotIn("motionContext", entry)
+            self.assertIsNone(entry["motionContext"])
+
+    def test_plot_keeps_captured_context_alongside_machining_mode(self):
+        state = CNCState(machine_config=get_machine_config("FANUC_STAR_SR20R_IV_B"))
+        control = UniversalConfigDrivenControl(init_nc_states=[state])
+        engine = NCExecutionEngine(control)
+
+        result = engine.get_Syncro_plot(
+            ["T200\nG0 X17 Y0 Z0\nM3 S3000\nG1 X5 F.05"],
+            synch=False,
+        )
+
+        plot = result[0]["plot"]
+        self.assertTrue(plot)
+        feeds = [entry for entry in plot if entry["traversal"] == "FEED"]
+        self.assertTrue(feeds)
+        for entry in plot:
+            context = entry["motionContext"]
+            self.assertIsInstance(context, dict)
+            self.assertIn("startAxes", context)
+            self.assertIn("endAxes", context)
+            self.assertIn("toolOffset", context)
+            self.assertEqual(entry["machiningMode"], context["machiningMode"])
+        self.assertEqual(feeds[-1]["machiningMode"], "turning")
 
     def test_control_error_returns_empty_lists(self):
         ctrl = FakeControlError()

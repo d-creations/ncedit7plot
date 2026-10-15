@@ -73,7 +73,11 @@ class TestMachiningModeIntegration(unittest.TestCase):
         self.assertEqual(plot[1]["sourceCode"], "G01")
         self.assertEqual(plot[1]["traversal"], "FEED")
         self.assertEqual(plot[1]["machiningMode"], "turning")
-        self.assertNotIn("motionContext", plot[1])
+        self.assertIsInstance(plot[1]["motionContext"], dict)
+        self.assertEqual(
+            plot[1]["motionContext"]["machiningMode"],
+            plot[1]["machiningMode"],
+        )
 
         # 2. Rapid while still in turning mode -> turning
         self.assertEqual(plot[2]["sourceCode"], "G00")

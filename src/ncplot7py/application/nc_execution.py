@@ -426,6 +426,7 @@ class NCExecutionEngine:
                     "sourceCode": motion_source_code,
                     "executionStep": execution_step,
                     "toolNumber": tool_number,
+                    "motionContext": context,
                     "machiningMode": (context.get("machiningMode") or "unknown") if context is not None else "unknown",
                 }
                 physical_channel = canal_index + 1
