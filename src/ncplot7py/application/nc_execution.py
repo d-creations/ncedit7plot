@@ -402,6 +402,7 @@ class NCExecutionEngine:
                 motion_source_code = None
                 execution_step = None
                 tool_number = "unknown"
+                context = None
                 if canal_index < len(nodes) and len(nodes[canal_index]) > len(lines):
                     motion_node = nodes[canal_index][len(lines)]
                     line_number = getattr(motion_node, "nc_code_line_nr", None)
@@ -410,6 +411,7 @@ class NCExecutionEngine:
                     motion_source_code = getattr(motion_node, "motion_source_code", None)
                     execution_step = getattr(motion_node, "execution_step", None)
                     tool_number = getattr(motion_node, "tool_number", "unknown")
+                    context = getattr(motion_node, "motion_context", None)
                     if tool_number is None:
                         tool_number = "unknown"
 
@@ -424,14 +426,13 @@ class NCExecutionEngine:
                     "sourceCode": motion_source_code,
                     "executionStep": execution_step,
                     "toolNumber": tool_number,
-                    "motionContext": getattr(motion_node, "motion_context", None) if canal_index < len(nodes) and len(nodes[canal_index]) > len(lines) else None,
+                    "machiningMode": (context.get("machiningMode") or "unknown") if context is not None else "unknown",
                 }
                 physical_channel = canal_index + 1
                 pose_channel = channel_number if channel_number is not None and len(tool_paths) == 1 else physical_channel
                 state = self.cnc_control.get_nc_state(physical_channel)
                 pose_tools = getattr(state, "extra", {}).get("pose_tools", {}) if state is not None else {}
                 config = getattr(state, "machine_config", None) if state is not None else None
-                context = plot_line["motionContext"]
                 tool = pose_tools.get(tool_number) if isinstance(pose_tools, dict) else None
                 if config is not None and getattr(config, "simulation", None) and tool is not None:
                     try:

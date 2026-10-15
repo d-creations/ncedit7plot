@@ -6,6 +6,7 @@ from ncplot7py.domain.cnc_state import CNCState
 from ncplot7py.domain.handlers.fanuc_machine.tool_handler import FanucToolHandler
 from ncplot7py.domain.handlers.siemens_machine.tool_handler import SiemensToolHandler
 from ncplot7py.domain.handlers.star_machine.tool_handler import StarFanucToolHandler
+from ncplot7py.domain.handlers.motion import MotionHandler
 from ncplot7py.domain.machines import get_machine_config, get_machine_regex_patterns
 from ncplot7py.shared.nc_nodes import NCCommandNode
 
@@ -55,6 +56,17 @@ class TestToolHandler(unittest.TestCase):
         self.assertEqual(state.extra["active_tool_number"], 2500)
         self.assertEqual(state.extra["active_offset_number"], 25)
 
+    def test_star_tool_change_returns_b_and_y_to_zero(self):
+        state = CNCState(machine_config=get_machine_config("FANUC_STAR_x-D_y-D_z_R.M.S"))
+        handler = StarFanucToolHandler()
+        state.set_axis("B", 25.0)
+        state.set_axis("Y", 12.0)
+
+        handler.handle(NCCommandNode(command_parameter={"T": "2500"}), state)
+
+        self.assertEqual(state.get_axis("B"), 0.0)
+        self.assertEqual(state.get_axis("Y"), 0.0)
+
     def test_packed_tool_and_offsets_are_independent(self):
         state = CNCState(machine_config=get_machine_config("FANUC_TURN"))
         handler = FanucToolHandler()
@@ -63,15 +75,48 @@ class TestToolHandler(unittest.TestCase):
             self.assertEqual(state.extra["active_tool_number"], 1)
             self.assertEqual(state.extra["active_offset_number"], offset)
 
-    def test_star_wear_command_does_not_change_tool_or_reset_b(self):
+    def test_star_generated_tool_return_keeps_rapid_metadata(self):
+        state = CNCState(machine_config=get_machine_config("FANUC_STAR_x-D_y-D_z_R.M.S"))
+        state.set_axis("Y", 12.0)
+        node = NCCommandNode(command_parameter={"T": "200"})
+
+        points, _ = StarFanucToolHandler(next_handler=MotionHandler()).handle(node, state)
+
+        self.assertGreater(len(points), 1)
+        self.assertEqual(node.motion_geometry, "LINEAR")
+        self.assertEqual(node.motion_traversal, "RAPID")
+        self.assertEqual(node.motion_source_code, "G00")
+        self.assertEqual(state.get_axis("Y"), 0.0)
+
+    def test_star_stationary_tool_selection_does_not_fabricate_motion_metadata(self):
+        state = CNCState(machine_config=get_machine_config("FANUC_STAR_x-D_y-D_z_R.M.S"))
+        node = NCCommandNode(command_parameter={"T": "200"})
+
+        StarFanucToolHandler(next_handler=MotionHandler()).handle(node, state)
+
+        self.assertIsNone(node.motion_geometry)
+
+    def test_star_generated_return_does_not_overwrite_authored_feed_metadata(self):
+        state = CNCState(machine_config=get_machine_config("FANUC_STAR_x-D_y-D_z_R.M.S"))
+        state.set_axis("Y", 12.0)
+        node = NCCommandNode(g_code_command={"G1"}, command_parameter={"T": "200", "X": "4"})
+
+        StarFanucToolHandler(next_handler=MotionHandler()).handle(node, state)
+
+        self.assertEqual(node.motion_traversal, "FEED")
+        self.assertEqual(node.motion_source_code, "G01")
+
+    def test_star_wear_command_does_not_change_tool_or_reset_axes(self):
         state = CNCState(machine_config=get_machine_config("FANUC_STAR_x-D_y-D_z_R.M.S"))
         handler = StarFanucToolHandler()
         handler.handle(NCCommandNode(command_parameter={"T": "2500"}), state)
         state.set_axis("B", 25.0)
+        state.set_axis("Y", 12.0)
         handler.handle(NCCommandNode(command_parameter={"T": "02"}), state)
         self.assertEqual(state.extra["active_tool_number"], 2500)
         self.assertEqual(state.extra["active_offset_number"], 2)
         self.assertEqual(state.get_axis("B"), 25.0)
+        self.assertEqual(state.get_axis("Y"), 12.0)
 
     def test_star_full_tool_codes_keep_distinct_identity(self):
         state = CNCState(machine_config=get_machine_config("FANUC_STAR_x-D_y-D_z_R.M.S"))

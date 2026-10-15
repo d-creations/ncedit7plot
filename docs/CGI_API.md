@@ -173,6 +173,7 @@ Each item in a canal's `segments` list includes motion semantics separately from
 - `executionStep` is the zero-based executed-command occurrence in its channel. Generated cycle segments from the same command share one step.
 - `toolNumber` is the active numeric tool, named-tool string, or `"unknown"` when no active tool can be determined.
 - `machiningMode`: `'turning' | 'milling' | 'unknown'`. Identifies the machining mode directly on each segment separately from kinematics/movement (`RAPID`, `FEED`, `ARC`).
+  - Engine `plot` entries expose the same field. Raw motion context remains internal for pose calculation and is not included in engine plots or CGI segments.
   - STAR turning: `M3`/`M4` sets turning mode; power-driven tools (`M36`/`M37`, `M46`/`M47`, `M56`/`M57`) set milling mode; `M5` stops main spindle, `M38`/`M48`/`M58` stop live tools.
   - FANUC turning: `M3`/`M4` sets turning mode; `M5` stops the turning spindle and subsequent operations switch to milling mode; subsequent `M3`/`M4` switches back to turning.
   - FANUC milling and Siemens milling: `M3`/`M4`/`M5` is always milling mode.

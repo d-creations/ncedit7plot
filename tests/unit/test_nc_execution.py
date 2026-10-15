@@ -208,6 +208,9 @@ class TestNCExecutionEngine(unittest.TestCase):
         self.assertEqual(plot[0]["t"], 0.5)
         self.assertEqual(plot[1]["x"], [2])
         self.assertEqual(canal["programExec"], [0, 1])
+        for entry in plot:
+            self.assertEqual(entry["machiningMode"], "unknown")
+            self.assertNotIn("motionContext", entry)
 
     def test_control_error_returns_empty_lists(self):
         ctrl = FakeControlError()

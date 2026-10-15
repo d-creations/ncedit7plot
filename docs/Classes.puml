@@ -1,0 +1,486 @@
+@startuml Classes
+title ncplot7py - Package and Class Diagram
+left to right direction
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+hide empty members
+
+package "ncplot7py" as package_ncplot7py {
+  package "config (machines.json)" as package_ncplot7py_config {
+  }
+  package "application" as package_ncplot7py_application {
+    package "nc_execution.py" as module_application_nc_execution {
+      class "NCExecutionEngine" as class_application_nc_execution_NCExecutionEngine
+    }
+  }
+  package "cli" as package_ncplot7py_cli {
+    package "main.py" as module_cli_main {
+    }
+  }
+  package "domain" as package_ncplot7py_domain {
+    package "handlers" as package_ncplot7py_domain_handlers {
+      package "fanuc_machine" as package_ncplot7py_domain_handlers_fanuc_machine {
+        package "tool_handler.py" as module_domain_handlers_fanuc_machine_tool_handler {
+          class "FanucToolHandler" as class_domain_handlers_fanuc_machine_tool_handler_FanucToolHandler
+        }
+      }
+      package "fanuc_mill_cnc" as package_ncplot7py_domain_handlers_fanuc_mill_cnc {
+        package "cutter_comp_handler.py" as module_domain_handlers_fanuc_mill_cnc_cutter_comp_handler {
+          class "FanucCutterCompCommandHandler" as class_domain_handlers_fanuc_mill_cnc_cutter_comp_handler_FanucCutterCompCommandHandler
+        }
+        package "gcode_group2_plane.py" as module_domain_handlers_fanuc_mill_cnc_gcode_group2_plane {
+          class "FanucMillPlaneMode" as class_domain_handlers_fanuc_mill_cnc_gcode_group2_plane_FanucMillPlaneMode
+          class "FanucMillGroup2PlaneHandler" as class_domain_handlers_fanuc_mill_cnc_gcode_group2_plane_FanucMillGroup2PlaneHandler
+        }
+        package "gcode_group5_feed_mode.py" as module_domain_handlers_fanuc_mill_cnc_gcode_group5_feed_mode {
+          class "FeedMode" as class_domain_handlers_fanuc_mill_cnc_gcode_group5_feed_mode_FeedMode
+          class "FanucMillGroup5FeedModeHandler" as class_domain_handlers_fanuc_mill_cnc_gcode_group5_feed_mode_FanucMillGroup5FeedModeHandler
+        }
+        package "gcode_groups.py" as module_domain_handlers_fanuc_mill_cnc_gcode_groups {
+          class "FanucMillGCodeGroupValidator" as class_domain_handlers_fanuc_mill_cnc_gcode_groups_FanucMillGCodeGroupValidator
+        }
+        package "gcode_speed_mode.py" as module_domain_handlers_fanuc_mill_cnc_gcode_speed_mode {
+          class "SpeedMode" as class_domain_handlers_fanuc_mill_cnc_gcode_speed_mode_SpeedMode
+          class "FanucMillSpeedModeHandler" as class_domain_handlers_fanuc_mill_cnc_gcode_speed_mode_FanucMillSpeedModeHandler
+        }
+        package "gcode_work_offset.py" as module_domain_handlers_fanuc_mill_cnc_gcode_work_offset {
+          class "FanucMillWorkOffsetHandler" as class_domain_handlers_fanuc_mill_cnc_gcode_work_offset_FanucMillWorkOffsetHandler
+        }
+        package "mcode_modal.py" as module_domain_handlers_fanuc_mill_cnc_mcode_modal {
+          class "FanucMillModalMCodeHandler" as class_domain_handlers_fanuc_mill_cnc_mcode_modal_FanucMillModalMCodeHandler
+        }
+      }
+      package "fanuc_turn_cnc" as package_ncplot7py_domain_handlers_fanuc_turn_cnc {
+        package "coordinate_rotation_handler.py" as module_domain_handlers_fanuc_turn_cnc_coordinate_rotation_handler {
+          class "FanucCoordinateRotationHandler" as class_domain_handlers_fanuc_turn_cnc_coordinate_rotation_handler_FanucCoordinateRotationHandler
+        }
+        package "drilling_cycle_handler.py" as module_domain_handlers_fanuc_turn_cnc_drilling_cycle_handler {
+          class "FanucTurnDrillingCycleHandler" as class_domain_handlers_fanuc_turn_cnc_drilling_cycle_handler_FanucTurnDrillingCycleHandler
+        }
+        package "g36_circular_threading.py" as module_domain_handlers_fanuc_turn_cnc_g36_circular_threading {
+          class "FanucG36CircularThreadingHandler" as class_domain_handlers_fanuc_turn_cnc_g36_circular_threading_FanucG36CircularThreadingHandler
+        }
+        package "g76_threading_cycle.py" as module_domain_handlers_fanuc_turn_cnc_g76_threading_cycle {
+          class "FanucG76ThreadingCycleHandler" as class_domain_handlers_fanuc_turn_cnc_g76_threading_cycle_FanucG76ThreadingCycleHandler
+        }
+        package "g92_threading_cycle.py" as module_domain_handlers_fanuc_turn_cnc_g92_threading_cycle {
+          class "FanucG92ThreadingCycleHandler" as class_domain_handlers_fanuc_turn_cnc_g92_threading_cycle_FanucG92ThreadingCycleHandler
+        }
+        package "gcode_cornering.py" as module_domain_handlers_fanuc_turn_cnc_gcode_cornering {
+          class "FanucCorneringHandler" as class_domain_handlers_fanuc_turn_cnc_gcode_cornering_FanucCorneringHandler
+        }
+        package "gcode_group0_coordinate_set.py" as module_domain_handlers_fanuc_turn_cnc_gcode_group0_coordinate_set {
+          class "GCodeGroup0CoordinateSetExecChainLink" as class_domain_handlers_fanuc_turn_cnc_gcode_group0_coordinate_set_GCodeGroup0CoordinateSetExecChainLink
+        }
+        package "gcode_group16_plane.py" as module_domain_handlers_fanuc_turn_cnc_gcode_group16_plane {
+          class "PlaneMode" as class_domain_handlers_fanuc_turn_cnc_gcode_group16_plane_PlaneMode
+          class "GCodeGroup16PlaneExecChainLink" as class_domain_handlers_fanuc_turn_cnc_gcode_group16_plane_GCodeGroup16PlaneExecChainLink
+        }
+        package "gcode_group21_polar_co.py" as module_domain_handlers_fanuc_turn_cnc_gcode_group21_polar_co {
+          class "GCodeGroup21PolarCoExecChainLink" as class_domain_handlers_fanuc_turn_cnc_gcode_group21_polar_co_GCodeGroup21PolarCoExecChainLink
+        }
+        package "gcode_group2_speed_mode.py" as module_domain_handlers_fanuc_turn_cnc_gcode_group2_speed_mode {
+          class "SpeedMode" as class_domain_handlers_fanuc_turn_cnc_gcode_group2_speed_mode_SpeedMode
+          class "FanucTurnSpeedModeHandler" as class_domain_handlers_fanuc_turn_cnc_gcode_group2_speed_mode_FanucTurnSpeedModeHandler
+        }
+        package "gcode_group5_feed_mode.py" as module_domain_handlers_fanuc_turn_cnc_gcode_group5_feed_mode {
+          class "FeedMode" as class_domain_handlers_fanuc_turn_cnc_gcode_group5_feed_mode_FeedMode
+          class "GCodeGroup5FeedModeExecChainLink" as class_domain_handlers_fanuc_turn_cnc_gcode_group5_feed_mode_GCodeGroup5FeedModeExecChainLink
+        }
+        package "gcode_precheck.py" as module_domain_handlers_fanuc_turn_cnc_gcode_precheck {
+          class "GcodePreCheckExecChainLink" as class_domain_handlers_fanuc_turn_cnc_gcode_precheck_GcodePreCheckExecChainLink
+        }
+        package "mcode_modal.py" as module_domain_handlers_fanuc_turn_cnc_mcode_modal {
+          class "FanucTurnModalMCodeHandler" as class_domain_handlers_fanuc_turn_cnc_mcode_modal_FanucTurnModalMCodeHandler
+        }
+        package "spindle_handler.py" as module_domain_handlers_fanuc_turn_cnc_spindle_handler {
+          class "FanucTurnSpindleHandler" as class_domain_handlers_fanuc_turn_cnc_spindle_handler_FanucTurnSpindleHandler
+        }
+        package "spindle_limit_handler.py" as module_domain_handlers_fanuc_turn_cnc_spindle_limit_handler {
+          class "FanucTurnSpindleLimitHandler" as class_domain_handlers_fanuc_turn_cnc_spindle_limit_handler_FanucTurnSpindleLimitHandler
+        }
+        package "threading_primitives.py" as module_domain_handlers_fanuc_turn_cnc_threading_primitives {
+          class "ThreadingPrimitiveEmitter" as class_domain_handlers_fanuc_turn_cnc_threading_primitives_ThreadingPrimitiveEmitter
+        }
+        package "unit_handler.py" as module_domain_handlers_fanuc_turn_cnc_unit_handler {
+          class "FanucTurnUnitHandler" as class_domain_handlers_fanuc_turn_cnc_unit_handler_FanucTurnUnitHandler
+        }
+      }
+      package "siemens_machine" as package_ncplot7py_domain_handlers_siemens_machine {
+        package "tool_handler.py" as module_domain_handlers_siemens_machine_tool_handler {
+          class "SiemensToolHandler" as class_domain_handlers_siemens_machine_tool_handler_SiemensToolHandler
+        }
+      }
+      package "siemens_mill_cnc" as package_ncplot7py_domain_handlers_siemens_mill_cnc {
+        package "alarm_handler.py" as module_domain_handlers_siemens_mill_cnc_alarm_handler {
+          class "SiemensAlarmHandler" as class_domain_handlers_siemens_mill_cnc_alarm_handler_SiemensAlarmHandler
+        }
+        package "builtin_handler.py" as module_domain_handlers_siemens_mill_cnc_builtin_handler {
+          class "SiemensBuiltinHandler" as class_domain_handlers_siemens_mill_cnc_builtin_handler_SiemensBuiltinHandler
+        }
+        package "common.py" as module_domain_handlers_siemens_mill_cnc_common {
+        }
+        package "coordinate_handler.py" as module_domain_handlers_siemens_mill_cnc_coordinate_handler {
+          class "SiemensISOCoordinateHandler" as class_domain_handlers_siemens_mill_cnc_coordinate_handler_SiemensISOCoordinateHandler
+        }
+        package "cutter_comp_handler.py" as module_domain_handlers_siemens_mill_cnc_cutter_comp_handler {
+          class "SiemensISOCutterCompHandler" as class_domain_handlers_siemens_mill_cnc_cutter_comp_handler_SiemensISOCutterCompHandler
+        }
+        package "cycles_handler.py" as module_domain_handlers_siemens_mill_cnc_cycles_handler {
+          class "SiemensNamedCyclesHandler" as class_domain_handlers_siemens_mill_cnc_cycles_handler_SiemensNamedCyclesHandler
+          class "SiemensISOCyclesHandler" as class_domain_handlers_siemens_mill_cnc_cycles_handler_SiemensISOCyclesHandler
+        }
+        package "feed_handler.py" as module_domain_handlers_siemens_mill_cnc_feed_handler {
+          class "FeedMode" as class_domain_handlers_siemens_mill_cnc_feed_handler_FeedMode
+          class "SiemensISOFeedHandler" as class_domain_handlers_siemens_mill_cnc_feed_handler_SiemensISOFeedHandler
+        }
+        package "flow_control_handler.py" as module_domain_handlers_siemens_mill_cnc_flow_control_handler {
+          class "SiemensFlowControlHandler" as class_domain_handlers_siemens_mill_cnc_flow_control_handler_SiemensFlowControlHandler
+        }
+        package "frame_handler.py" as module_domain_handlers_siemens_mill_cnc_frame_handler {
+          class "SiemensFrameHandler" as class_domain_handlers_siemens_mill_cnc_frame_handler_SiemensFrameHandler
+        }
+        package "gcode_group6_plane.py" as module_domain_handlers_siemens_mill_cnc_gcode_group6_plane {
+          class "SiemensGroup6PlaneHandler" as class_domain_handlers_siemens_mill_cnc_gcode_group6_plane_SiemensGroup6PlaneHandler
+        }
+        package "mcode_modal.py" as module_domain_handlers_siemens_mill_cnc_mcode_modal {
+          class "SiemensMillModalMCodeHandler" as class_domain_handlers_siemens_mill_cnc_mcode_modal_SiemensMillModalMCodeHandler
+        }
+        package "misc_handler.py" as module_domain_handlers_siemens_mill_cnc_misc_handler {
+          class "SiemensISOMiscHandler" as class_domain_handlers_siemens_mill_cnc_misc_handler_SiemensISOMiscHandler
+        }
+        package "mode_handler.py" as module_domain_handlers_siemens_mill_cnc_mode_handler {
+          class "SiemensModeHandler" as class_domain_handlers_siemens_mill_cnc_mode_handler_SiemensModeHandler
+        }
+        package "motion_handler.py" as module_domain_handlers_siemens_mill_cnc_motion_handler {
+          class "SiemensMotionHandler" as class_domain_handlers_siemens_mill_cnc_motion_handler_SiemensMotionHandler
+        }
+        package "path_mode_handler.py" as module_domain_handlers_siemens_mill_cnc_path_mode_handler {
+          class "SiemensPathModeHandler" as class_domain_handlers_siemens_mill_cnc_path_mode_handler_SiemensPathModeHandler
+        }
+        package "polar_handler.py" as module_domain_handlers_siemens_mill_cnc_polar_handler {
+          class "SiemensISOPolarHandler" as class_domain_handlers_siemens_mill_cnc_polar_handler_SiemensISOPolarHandler
+        }
+        package "speed_handler.py" as module_domain_handlers_siemens_mill_cnc_speed_handler {
+          class "SiemensSpeedMode" as class_domain_handlers_siemens_mill_cnc_speed_handler_SiemensSpeedMode
+          class "SiemensISOSpeedHandler" as class_domain_handlers_siemens_mill_cnc_speed_handler_SiemensISOSpeedHandler
+        }
+        package "tool_length_handler.py" as module_domain_handlers_siemens_mill_cnc_tool_length_handler {
+          class "SiemensISOToolLengthHandler" as class_domain_handlers_siemens_mill_cnc_tool_length_handler_SiemensISOToolLengthHandler
+        }
+        package "transformation_handler.py" as module_domain_handlers_siemens_mill_cnc_transformation_handler {
+          class "SiemensTransformationHandler" as class_domain_handlers_siemens_mill_cnc_transformation_handler_SiemensTransformationHandler
+        }
+        package "unit_handler.py" as module_domain_handlers_siemens_mill_cnc_unit_handler {
+          class "SiemensISOInchMetricHandler" as class_domain_handlers_siemens_mill_cnc_unit_handler_SiemensISOInchMetricHandler
+        }
+        package "variable_handler.py" as module_domain_handlers_siemens_mill_cnc_variable_handler {
+          class "SiemensExpressionEvaluator" as class_domain_handlers_siemens_mill_cnc_variable_handler_SiemensExpressionEvaluator
+          class "SiemensVariableHandler" as class_domain_handlers_siemens_mill_cnc_variable_handler_SiemensVariableHandler
+        }
+      }
+      package "star_machine" as package_ncplot7py_domain_handlers_star_machine {
+        package "automatic_coordinate_handler.py" as module_domain_handlers_star_machine_automatic_coordinate_handler {
+          class "StarAutomaticCoordinateHandler" as class_domain_handlers_star_machine_automatic_coordinate_handler_StarAutomaticCoordinateHandler
+        }
+        package "b1_tilting_handler.py" as module_domain_handlers_star_machine_b1_tilting_handler {
+          class "StarB1TiltingHandler" as class_domain_handlers_star_machine_b1_tilting_handler_StarB1TiltingHandler
+        }
+        package "g161_step_cycle_handler.py" as module_domain_handlers_star_machine_g161_step_cycle_handler {
+          class "StepCycleParameters" as class_domain_handlers_star_machine_g161_step_cycle_handler_StepCycleParameters
+          class "StarG161StepCycleHandler" as class_domain_handlers_star_machine_g161_step_cycle_handler_StarG161StepCycleHandler
+        }
+        package "g266_handler.py" as module_domain_handlers_star_machine_g266_handler {
+          class "StarG266Handler" as class_domain_handlers_star_machine_g266_handler_StarG266Handler
+        }
+        package "mcode_modal.py" as module_domain_handlers_star_machine_mcode_modal {
+          class "StarModalMCodeHandler" as class_domain_handlers_star_machine_mcode_modal_StarModalMCodeHandler
+        }
+        package "spindle_fluctuation_handler.py" as module_domain_handlers_star_machine_spindle_fluctuation_handler {
+          class "StarSpindleFluctuationHandler" as class_domain_handlers_star_machine_spindle_fluctuation_handler_StarSpindleFluctuationHandler
+        }
+        package "spindle_handler.py" as module_domain_handlers_star_machine_spindle_handler {
+          class "StarSpindleHandler" as class_domain_handlers_star_machine_spindle_handler_StarSpindleHandler
+        }
+        package "star_turn_handler.py" as module_domain_handlers_star_machine_star_turn_handler {
+          class "StarTurnHandler" as class_domain_handlers_star_machine_star_turn_handler_StarTurnHandler
+        }
+        package "tool_handler.py" as module_domain_handlers_star_machine_tool_handler {
+          class "StarFanucToolHandler" as class_domain_handlers_star_machine_tool_handler_StarFanucToolHandler
+        }
+      }
+      package "axis_binding.py" as module_domain_handlers_axis_binding {
+        class "AxisBindingHandler" as class_domain_handlers_axis_binding_AxisBindingHandler
+      }
+      package "base_tool_handler.py" as module_domain_handlers_base_tool_handler {
+        class "BaseToolHandler" as class_domain_handlers_base_tool_handler_BaseToolHandler
+      }
+      package "control_flow.py" as module_domain_handlers_control_flow {
+        class "ControlFlowHandler" as class_domain_handlers_control_flow_ControlFlowHandler
+      }
+      package "cycle_end.py" as module_domain_handlers_cycle_end {
+        class "CycleEnd" as class_domain_handlers_cycle_end_CycleEnd
+      }
+      package "fanuc_alarm.py" as module_domain_handlers_fanuc_alarm {
+        class "FanucAlarmHandler" as class_domain_handlers_fanuc_alarm_FanucAlarmHandler
+      }
+      package "mcode_modal.py" as module_domain_handlers_mcode_modal {
+        class "BaseModalMCodeHandler" as class_domain_handlers_mcode_modal_BaseModalMCodeHandler
+      }
+      package "modal.py" as module_domain_handlers_modal {
+        class "ModalHandler" as class_domain_handlers_modal_ModalHandler
+      }
+      package "motion.py" as module_domain_handlers_motion {
+        class "MotionHandler" as class_domain_handlers_motion_MotionHandler
+      }
+      package "radius_compensation.py" as module_domain_handlers_radius_compensation {
+        class "RadiusCompensationCommandHandler" as class_domain_handlers_radius_compensation_RadiusCompensationCommandHandler
+      }
+      package "variable.py" as module_domain_handlers_variable {
+        class "VariableHandler" as class_domain_handlers_variable_VariableHandler
+      }
+      package "wait_code.py" as module_domain_handlers_wait_code {
+        class "WaitCodeHandler" as class_domain_handlers_wait_code_WaitCodeHandler
+      }
+    }
+    package "cnc_state.py" as module_domain_cnc_state {
+      class "MachineState" as class_domain_cnc_state_MachineState
+      class "CNCState" as class_domain_cnc_state_CNCState
+    }
+    package "exceptions.py" as module_domain_exceptions {
+      class "ExceptionTyps" as class_domain_exceptions_ExceptionTyps
+      class "ExceptionNode" as class_domain_exceptions_ExceptionNode
+    }
+    package "exec_chain.py" as module_domain_exec_chain {
+      class "Handler" as class_domain_exec_chain_Handler
+    }
+    package "expression_evaluator.py" as module_domain_expression_evaluator {
+      class "ExpressionEvaluator" as class_domain_expression_evaluator_ExpressionEvaluator
+    }
+    package "i18n.py" as module_domain_i18n {
+      class "MessageKey" as class_domain_i18n_MessageKey
+      class "MessageCatalog" as class_domain_i18n_MessageCatalog
+      class "ExceptionNodeProtocol" as class_domain_i18n_ExceptionNodeProtocol
+    }
+    package "machines.py" as module_domain_machines {
+      class "MachineConfig" as class_domain_machines_MachineConfig
+    }
+    package "models.py" as module_domain_models {
+    }
+    package "simulation_contract.py" as module_domain_simulation_contract {
+      class "SimulationContractError" as class_domain_simulation_contract_SimulationContractError
+    }
+    package "tool_compensation.py" as module_domain_tool_compensation {
+      class "ToolCompensationState" as class_domain_tool_compensation_ToolCompensationState
+      class "ActiveToolGeometry" as class_domain_tool_compensation_ActiveToolGeometry
+      class "ToolDataResolver" as class_domain_tool_compensation_ToolDataResolver
+      class "ToolPathCompensator" as class_domain_tool_compensation_ToolPathCompensator
+    }
+    package "tool_pose.py" as module_domain_tool_pose {
+      class "ToolPoseError" as class_domain_tool_pose_ToolPoseError
+    }
+  }
+  package "infrastructure" as package_ncplot7py_infrastructure {
+    package "lexers" as package_ncplot7py_infrastructure_lexers {
+      package "fanuc_program_lexer.py" as module_infrastructure_lexers_fanuc_program_lexer {
+        class "FanucProgramLexer" as class_infrastructure_lexers_fanuc_program_lexer_FanucProgramLexer
+      }
+      package "lexer_factory.py" as module_infrastructure_lexers_lexer_factory {
+      }
+      package "siemens_program_lexer.py" as module_infrastructure_lexers_siemens_program_lexer {
+        class "SiemensProgramLexer" as class_infrastructure_lexers_siemens_program_lexer_SiemensProgramLexer
+      }
+    }
+    package "machines" as package_ncplot7py_infrastructure_machines {
+      package "base_stateful_control.py" as module_infrastructure_machines_base_stateful_control {
+        class "BaseStatefulCanal" as class_infrastructure_machines_base_stateful_control_BaseStatefulCanal
+        class "BaseStatefulControl" as class_infrastructure_machines_base_stateful_control_BaseStatefulControl
+        class "UniversalConfigDrivenCanal" as class_infrastructure_machines_base_stateful_control_UniversalConfigDrivenCanal
+        class "UniversalConfigDrivenControl" as class_infrastructure_machines_base_stateful_control_UniversalConfigDrivenControl
+      }
+      package "star_canal_syncro.py" as module_infrastructure_machines_star_canal_syncro {
+        class "CanalSynchro" as class_infrastructure_machines_star_canal_syncro_CanalSynchro
+      }
+    }
+    package "parsers" as package_ncplot7py_infrastructure_parsers {
+      package "fanuc_command_parser.py" as module_infrastructure_parsers_fanuc_command_parser {
+        class "FanucCommandParser" as class_infrastructure_parsers_fanuc_command_parser_FanucCommandParser
+      }
+      package "nc_command_parser.py" as module_infrastructure_parsers_nc_command_parser {
+        class "NCCommandParserError" as class_infrastructure_parsers_nc_command_parser_NCCommandParserError
+        class "NCCommandStringParser" as class_infrastructure_parsers_nc_command_parser_NCCommandStringParser
+      }
+      package "siemens_command_parser.py" as module_infrastructure_parsers_siemens_command_parser {
+        class "SiemensCommandParser" as class_infrastructure_parsers_siemens_command_parser_SiemensCommandParser
+      }
+    }
+    package "handler_chain_builder.py" as module_infrastructure_handler_chain_builder {
+      class "HandlerChainBuilder" as class_infrastructure_handler_chain_builder_HandlerChainBuilder
+    }
+    package "nc_language_frontend.py" as module_infrastructure_nc_language_frontend {
+      class "NCLanguageFrontend" as class_infrastructure_nc_language_frontend_NCLanguageFrontend
+    }
+  }
+  package "interfaces" as package_ncplot7py_interfaces {
+    package "BaseLinkedListAsList.py" as module_interfaces_BaseLinkedListAsList {
+      class "BaseLinkedListAsList" as class_interfaces_BaseLinkedListAsList_BaseLinkedListAsList
+    }
+    package "BaseNCCanal.py" as module_interfaces_BaseNCCanal {
+      class "NCControl" as class_interfaces_BaseNCCanal_NCControl
+    }
+    package "BaseNCCommandNode.py" as module_interfaces_BaseNCCommandNode {
+      class "BaseNCCommandNode" as class_interfaces_BaseNCCommandNode_BaseNCCommandNode
+    }
+    package "BaseNCCommandParser.py" as module_interfaces_BaseNCCommandParser {
+      class "BaseNCCommandParser" as class_interfaces_BaseNCCommandParser_BaseNCCommandParser
+    }
+    package "BaseNCControl.py" as module_interfaces_BaseNCControl {
+      class "NCCanal" as class_interfaces_BaseNCControl_NCCanal
+    }
+    package "BaseNCProgramLexer.py" as module_interfaces_BaseNCProgramLexer {
+      class "NCSourceStatement" as class_interfaces_BaseNCProgramLexer_NCSourceStatement
+      class "BaseNCProgramLexer" as class_interfaces_BaseNCProgramLexer_BaseNCProgramLexer
+    }
+  }
+  package "locales (de.xml, en.xml)" as package_ncplot7py_locales {
+  }
+  package "shared" as package_ncplot7py_shared {
+    package "file_adapter.py" as module_shared_file_adapter {
+    }
+    package "linked_list_list.py" as module_shared_linked_list_list {
+      class "LinkedListAsList" as class_shared_linked_list_list_LinkedListAsList
+    }
+    package "logging_facade.py" as module_shared_logging_facade {
+      class "InMemoryLogHandler" as class_shared_logging_facade_InMemoryLogHandler
+    }
+    package "nc_nodes.py" as module_shared_nc_nodes {
+      class "NCCommandNode" as class_shared_nc_nodes_NCCommandNode
+    }
+    package "point.py" as module_shared_point {
+      class "Point" as class_shared_point_Point
+    }
+    package "registry.py" as module_shared_registry {
+      class "Registry" as class_shared_registry_Registry
+    }
+    package "state_protocol.py" as module_shared_state_protocol {
+      class "StateProtocol" as class_shared_state_protocol_StateProtocol
+    }
+  }
+}
+
+package_ncplot7py_application ..> package_ncplot7py_domain
+package_ncplot7py_application ..> package_ncplot7py_infrastructure
+package_ncplot7py_application ..> package_ncplot7py_shared
+package_ncplot7py_cli ..> package_ncplot7py_infrastructure
+package_ncplot7py_cli ..> package_ncplot7py_shared
+package_ncplot7py_domain ..> package_ncplot7py_shared
+package_ncplot7py_infrastructure ..> package_ncplot7py_domain
+package_ncplot7py_infrastructure ..> package_ncplot7py_interfaces
+package_ncplot7py_infrastructure ..> package_ncplot7py_shared
+package_ncplot7py_shared ..> package_ncplot7py_domain
+package_ncplot7py_shared ..> package_ncplot7py_interfaces
+class_domain_exec_chain_Handler <|-- class_domain_handlers_axis_binding_AxisBindingHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_control_flow_ControlFlowHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_cycle_end_CycleEnd
+class_domain_exec_chain_Handler <|-- class_domain_handlers_fanuc_alarm_FanucAlarmHandler
+class_domain_handlers_base_tool_handler_BaseToolHandler <|-- class_domain_handlers_fanuc_machine_tool_handler_FanucToolHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_fanuc_machine_tool_handler_FanucToolHandler
+class_domain_handlers_radius_compensation_RadiusCompensationCommandHandler <|-- class_domain_handlers_fanuc_mill_cnc_cutter_comp_handler_FanucCutterCompCommandHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_fanuc_mill_cnc_gcode_group2_plane_FanucMillGroup2PlaneHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_fanuc_mill_cnc_gcode_group5_feed_mode_FanucMillGroup5FeedModeHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_fanuc_mill_cnc_gcode_groups_FanucMillGCodeGroupValidator
+class_domain_exec_chain_Handler <|-- class_domain_handlers_fanuc_mill_cnc_gcode_speed_mode_FanucMillSpeedModeHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_fanuc_mill_cnc_gcode_work_offset_FanucMillWorkOffsetHandler
+class_domain_handlers_mcode_modal_BaseModalMCodeHandler <|-- class_domain_handlers_fanuc_mill_cnc_mcode_modal_FanucMillModalMCodeHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_fanuc_turn_cnc_coordinate_rotation_handler_FanucCoordinateRotationHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_fanuc_turn_cnc_drilling_cycle_handler_FanucTurnDrillingCycleHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_fanuc_turn_cnc_g36_circular_threading_FanucG36CircularThreadingHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_fanuc_turn_cnc_g76_threading_cycle_FanucG76ThreadingCycleHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_fanuc_turn_cnc_g92_threading_cycle_FanucG92ThreadingCycleHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_fanuc_turn_cnc_gcode_cornering_FanucCorneringHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_fanuc_turn_cnc_gcode_group0_coordinate_set_GCodeGroup0CoordinateSetExecChainLink
+class_domain_exec_chain_Handler <|-- class_domain_handlers_fanuc_turn_cnc_gcode_group16_plane_GCodeGroup16PlaneExecChainLink
+class_domain_exec_chain_Handler <|-- class_domain_handlers_fanuc_turn_cnc_gcode_group21_polar_co_GCodeGroup21PolarCoExecChainLink
+class_domain_exec_chain_Handler <|-- class_domain_handlers_fanuc_turn_cnc_gcode_group2_speed_mode_FanucTurnSpeedModeHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_fanuc_turn_cnc_gcode_group5_feed_mode_GCodeGroup5FeedModeExecChainLink
+class_domain_exec_chain_Handler <|-- class_domain_handlers_fanuc_turn_cnc_gcode_precheck_GcodePreCheckExecChainLink
+class_domain_handlers_mcode_modal_BaseModalMCodeHandler <|-- class_domain_handlers_fanuc_turn_cnc_mcode_modal_FanucTurnModalMCodeHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_fanuc_turn_cnc_spindle_handler_FanucTurnSpindleHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_fanuc_turn_cnc_spindle_limit_handler_FanucTurnSpindleLimitHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_fanuc_turn_cnc_unit_handler_FanucTurnUnitHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_mcode_modal_BaseModalMCodeHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_modal_ModalHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_motion_MotionHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_radius_compensation_RadiusCompensationCommandHandler
+class_domain_handlers_base_tool_handler_BaseToolHandler <|-- class_domain_handlers_siemens_machine_tool_handler_SiemensToolHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_siemens_machine_tool_handler_SiemensToolHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_siemens_mill_cnc_alarm_handler_SiemensAlarmHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_siemens_mill_cnc_builtin_handler_SiemensBuiltinHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_siemens_mill_cnc_coordinate_handler_SiemensISOCoordinateHandler
+class_domain_handlers_radius_compensation_RadiusCompensationCommandHandler <|-- class_domain_handlers_siemens_mill_cnc_cutter_comp_handler_SiemensISOCutterCompHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_siemens_mill_cnc_cycles_handler_SiemensNamedCyclesHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_siemens_mill_cnc_cycles_handler_SiemensISOCyclesHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_siemens_mill_cnc_feed_handler_SiemensISOFeedHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_siemens_mill_cnc_flow_control_handler_SiemensFlowControlHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_siemens_mill_cnc_frame_handler_SiemensFrameHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_siemens_mill_cnc_gcode_group6_plane_SiemensGroup6PlaneHandler
+class_domain_handlers_mcode_modal_BaseModalMCodeHandler <|-- class_domain_handlers_siemens_mill_cnc_mcode_modal_SiemensMillModalMCodeHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_siemens_mill_cnc_misc_handler_SiemensISOMiscHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_siemens_mill_cnc_mode_handler_SiemensModeHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_siemens_mill_cnc_motion_handler_SiemensMotionHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_siemens_mill_cnc_path_mode_handler_SiemensPathModeHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_siemens_mill_cnc_polar_handler_SiemensISOPolarHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_siemens_mill_cnc_speed_handler_SiemensISOSpeedHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_siemens_mill_cnc_tool_length_handler_SiemensISOToolLengthHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_siemens_mill_cnc_transformation_handler_SiemensTransformationHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_siemens_mill_cnc_unit_handler_SiemensISOInchMetricHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_siemens_mill_cnc_variable_handler_SiemensVariableHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_star_machine_automatic_coordinate_handler_StarAutomaticCoordinateHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_star_machine_b1_tilting_handler_StarB1TiltingHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_star_machine_g161_step_cycle_handler_StarG161StepCycleHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_star_machine_g266_handler_StarG266Handler
+class_domain_handlers_mcode_modal_BaseModalMCodeHandler <|-- class_domain_handlers_star_machine_mcode_modal_StarModalMCodeHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_star_machine_spindle_fluctuation_handler_StarSpindleFluctuationHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_star_machine_spindle_handler_StarSpindleHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_star_machine_star_turn_handler_StarTurnHandler
+class_domain_handlers_fanuc_machine_tool_handler_FanucToolHandler <|-- class_domain_handlers_star_machine_tool_handler_StarFanucToolHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_variable_VariableHandler
+class_domain_exec_chain_Handler <|-- class_domain_handlers_wait_code_WaitCodeHandler
+class_interfaces_BaseNCProgramLexer_BaseNCProgramLexer <|-- class_infrastructure_lexers_fanuc_program_lexer_FanucProgramLexer
+class_interfaces_BaseNCProgramLexer_BaseNCProgramLexer <|-- class_infrastructure_lexers_siemens_program_lexer_SiemensProgramLexer
+class_interfaces_BaseNCControl_NCCanal <|-- class_infrastructure_machines_base_stateful_control_BaseStatefulCanal
+class_interfaces_BaseNCCanal_NCControl <|-- class_infrastructure_machines_base_stateful_control_BaseStatefulControl
+class_infrastructure_machines_base_stateful_control_BaseStatefulCanal <|-- class_infrastructure_machines_base_stateful_control_UniversalConfigDrivenCanal
+class_infrastructure_machines_base_stateful_control_BaseStatefulControl <|-- class_infrastructure_machines_base_stateful_control_UniversalConfigDrivenControl
+class_interfaces_BaseNCCommandParser_BaseNCCommandParser <|-- class_infrastructure_parsers_fanuc_command_parser_FanucCommandParser
+class_domain_exceptions_ExceptionNode <|-- class_infrastructure_parsers_nc_command_parser_NCCommandParserError
+class_interfaces_BaseNCCommandParser_BaseNCCommandParser <|-- class_infrastructure_parsers_nc_command_parser_NCCommandStringParser
+class_interfaces_BaseNCCommandParser_BaseNCCommandParser <|-- class_infrastructure_parsers_siemens_command_parser_SiemensCommandParser
+class_interfaces_BaseLinkedListAsList_BaseLinkedListAsList <|-- class_shared_linked_list_list_LinkedListAsList
+class_domain_exec_chain_Handler <|-- class_shared_logging_facade_InMemoryLogHandler
+class_interfaces_BaseNCCommandNode_BaseNCCommandNode <|-- class_shared_nc_nodes_NCCommandNode
+class_domain_cnc_state_CNCState *-- class_domain_cnc_state_MachineState
+class_domain_cnc_state_CNCState *-- class_domain_tool_compensation_ToolCompensationState
+class_domain_cnc_state_MachineState --> class_domain_machines_MachineConfig
+class_application_nc_execution_NCExecutionEngine ..> class_interfaces_BaseNCCanal_NCControl
+class_infrastructure_machines_base_stateful_control_BaseStatefulControl *-- class_infrastructure_machines_base_stateful_control_BaseStatefulCanal
+class_infrastructure_machines_base_stateful_control_BaseStatefulCanal --> class_domain_cnc_state_CNCState
+class_infrastructure_machines_base_stateful_control_BaseStatefulCanal --> class_domain_tool_compensation_ToolPathCompensator
+class_infrastructure_machines_base_stateful_control_BaseStatefulCanal --> class_shared_nc_nodes_NCCommandNode
+class_infrastructure_machines_base_stateful_control_BaseStatefulCanal --> class_shared_point_Point
+class_infrastructure_handler_chain_builder_HandlerChainBuilder ..> class_domain_exec_chain_Handler
+class_infrastructure_nc_language_frontend_NCLanguageFrontend --> class_interfaces_BaseNCProgramLexer_BaseNCProgramLexer
+class_infrastructure_nc_language_frontend_NCLanguageFrontend --> class_interfaces_BaseNCCommandParser_BaseNCCommandParser
+
+legend right
+  |= Element |= Meaning |
+  | package | Python package / source folder |
+  | package "*.py" | Python module |
+  | class | Class, enum, dataclass, protocol, or interface |
+  | <|-- | Inheritance / implementation |
+  | --> | Model or composition relationship |
+  | ..> | Uses / dependency |
+endlegend
+
+@enduml
