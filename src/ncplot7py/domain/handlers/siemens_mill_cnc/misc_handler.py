@@ -47,11 +47,25 @@ class SiemensISOMiscHandler(Handler):
             return [], duration
 
         if has_g28:
-            # Reference return.
-            # Usually moves to intermediate point then to reference.
-            # Simplified: Move to reference (0,0,0 in Machine Coords).
-            # We can just let it pass through or handle it.
-            pass
+            node.g_code.add("G00")
+            home_positions = getattr(getattr(state, "machine_config", None), "home_position", {}) or {}
+            axis_map = state.channel_state.axis_map or {}
+            inc_map = {"U": "X", "V": "Y", "W": "Z", "H": "C"}
+            for key in list(node.command_parameter.keys()):
+                upper_key = key.upper()
+                mapped = inc_map.get(upper_key, upper_key)
+                if mapped not in ("X", "Y", "Z", "A", "B", "C") and mapped not in home_positions:
+                    continue
+                try:
+                    raw = float(node.command_parameter.get(key))
+                except Exception:
+                    continue
+                physical = axis_map.get(mapped, mapped)
+                home_val = float(home_positions.get(physical, home_positions.get(mapped, 0.0)))
+                target = home_val + raw if upper_key in inc_map else (home_val if raw == 0.0 else raw)
+                node.command_parameter[mapped] = str(target)
+                if mapped != upper_key:
+                    node.command_parameter.pop(key, None)
 
         if self.next_handler is not None:
             return self.next_handler.handle(node, state)

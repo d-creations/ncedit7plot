@@ -63,7 +63,7 @@ class StarB1TiltingHandler(Handler):
             "source_code": code,
         }])
         node.command_parameter.clear()
-        state.extra["star.b1_tilting"] = {
+        state.star_state.b1_tilting = {
             "mode": code,
             "angle": angle,
             "coordinate_reference": coordinate_reference,
@@ -73,20 +73,20 @@ class StarB1TiltingHandler(Handler):
         return result_points, result_duration
 
     def _validate_runtime(self, node: NCCommandNode, state: CNCState, code: str) -> None:
-        tool_code = state.extra.get("current_tool_code")
+        tool_code = state.tool_state.current_tool_code
         if not isinstance(tool_code, int) or not 1600 <= tool_code <= 1900:
             self._error(node, 3233, f"{code} requires a selected T1600-T1900 tool", str(tool_code))
         if state.get_modal("tool_nose_compensation") in {"G41", "G42"}:
             self._error(node, 3229, f"{code} cannot execute during G41/G42 mode", "")
-        if state.get_modal("drilling_cycle") or state.extra.get("fanuc_turn_drilling_cycle"):
+        if state.get_modal("drilling_cycle") or state.fanuc_state.turn_drilling_cycle:
             self._error(node, 3230, f"{code} cannot execute during a drilling cycle", "")
-        if state.extra.get("wear_offset_active"):
+        if state.tool_state.wear_offset_active:
             self._error(node, 3231, f"{code} cannot execute during wear offset", "")
-        if state.extra.get("fanuc.coordinate_rotation"):
+        if state.fanuc_state.coordinate_rotation:
             self._error(node, 3232, f"{code} cannot execute during G68.1 mode", "")
 
-        path_number = int(state.extra.get("path_number", 1))
-        path_mode = state.extra.get("star.path_mode")
+        path_number = int(state.channel_state.path_number or 1)
+        path_mode = state.star_state.path_mode
         if path_number == 1 and path_mode == "M172":
             self._error(node, 3235, f"{code} cannot execute on PATH1 during M172 mode", "")
         if path_number == 2 and path_mode == "M171":

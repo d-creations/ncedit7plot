@@ -25,7 +25,7 @@ class FanucMillWorkOffsetHandler(Handler):
 
             # Handle classical offsets (G54-G59)
             if 54 <= gnum <= 59:
-                state.extra["work_offset"] = f"G{gnum}"
+                state.channel_state.work_offset = f"G{gnum}"
 
                 # Currently we aren't doing deep lookup in offset tables 
                 # but we track the active work offset.
@@ -49,10 +49,7 @@ class FanucMillWorkOffsetHandler(Handler):
                     if axis in node.command_parameter:
                         try:
                             val = float(node.command_parameter[axis])
-                            # Could store in local_offsets
-                            if "local_offsets" not in state.extra:
-                                state.extra["local_offsets"] = {}
-                            state.extra["local_offsets"][axis] = val
+                            state.channel_state.local_offsets[axis] = val
                         except Exception:
                             pass
         

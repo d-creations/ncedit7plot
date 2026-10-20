@@ -26,7 +26,7 @@ class SiemensNamedCyclesHandler(Handler):
                 is_modal_def = True
                 cmd = cmd.replace("MCALL", "").strip()
                 if not cmd:
-                    state.extra["active_named_cycle"] = None
+                    state.siemens_state.active_named_cycle = None
             
             match = re.search(r"(CYCLE\d+|HOLES\d+|POCKET\d+|SLOT\d+|LONGHOLE)\s*\((.*)\)", cmd, re.IGNORECASE)
             if match:
@@ -35,7 +35,7 @@ class SiemensNamedCyclesHandler(Handler):
                 cycle_call_params = [p.strip() for p in params_str.split(',')]
 
         if is_modal_def and cycle_call_name:
-            state.extra["active_named_cycle"] = {
+            state.siemens_state.active_named_cycle = {
                 "name": cycle_call_name,
                 "params": cycle_call_params
             }
@@ -53,11 +53,11 @@ class SiemensNamedCyclesHandler(Handler):
                 if has_motion:
                     target_cycle_name = cycle_call_name
                     target_cycle_params = cycle_call_params
-        elif state.extra.get("active_named_cycle"):
+        elif state.siemens_state.active_named_cycle:
             has_motion = "X" in node.command_parameter or "Y" in node.command_parameter
             if has_motion:
-                target_cycle_name = state.extra["active_named_cycle"]["name"]
-                target_cycle_params = state.extra["active_named_cycle"]["params"]
+                target_cycle_name = state.siemens_state.active_named_cycle["name"]
+                target_cycle_params = state.siemens_state.active_named_cycle["params"]
 
         if target_cycle_name:
             points = []
@@ -124,7 +124,7 @@ class SiemensNamedCyclesHandler(Handler):
         dbh = self._parse_float(params[4])
         num = int(self._parse_float(params[5]))
         
-        active_cycle = state.extra.get("active_named_cycle")
+        active_cycle = state.siemens_state.active_named_cycle
         if not active_cycle:
             print("HOLES1: No active cycle")
             return [], 0.0
@@ -163,7 +163,7 @@ class SiemensNamedCyclesHandler(Handler):
         inda = self._parse_float(params[4])
         num = int(self._parse_float(params[5]))
         
-        active_cycle = state.extra.get("active_named_cycle")
+        active_cycle = state.siemens_state.active_named_cycle
         if not active_cycle:
             return [], 0.0
             
@@ -263,7 +263,7 @@ class SiemensNamedCyclesHandler(Handler):
         num1 = int(self._parse_float(params[5]))
         num2 = int(self._parse_float(params[6]))
         
-        active_cycle = state.extra.get("active_named_cycle")
+        active_cycle = state.siemens_state.active_named_cycle
         if not active_cycle:
             return [], 0.0
             
@@ -701,13 +701,13 @@ class SiemensNamedCyclesHandler(Handler):
             rot_c = self._parse_float(params[9]) if len(params) > 9 else 0.0
             
             # Store in state for potential future use or by other handlers
-            state.extra["rotation"] = {"A": rot_a, "B": rot_b, "C": rot_c}
+            state.channel_state.rotation = {"A": rot_a, "B": rot_b, "C": rot_c}
             
             # We might also need translation (X0, Y0, Z0) - indices 4, 5, 6
             trans_x = self._parse_float(params[4]) if len(params) > 4 else 0.0
             trans_y = self._parse_float(params[5]) if len(params) > 5 else 0.0
             trans_z = self._parse_float(params[6]) if len(params) > 6 else 0.0
-            state.extra["rotation_origin"] = {"X": trans_x, "Y": trans_y, "Z": trans_z}
+            state.channel_state.rotation_origin = {"X": trans_x, "Y": trans_y, "Z": trans_z}
             
         except Exception as e:
             # Log error but don't crash
@@ -851,8 +851,8 @@ class SiemensISOCyclesHandler(Handler):
             try:
                 if g.upper().startswith("G"):
                     gnum = int(g[1:])
-                    if gnum == 98: state.extra["cycle_return_mode"] = 98
-                    elif gnum == 99: state.extra["cycle_return_mode"] = 99
+                    if gnum == 98: state.siemens_state.cycle_return_mode = 98
+                    elif gnum == 99: state.siemens_state.cycle_return_mode = 99
             except Exception: continue
 
         cycle_code = None
@@ -866,21 +866,21 @@ class SiemensISOCyclesHandler(Handler):
                         cycle_code = gnum
                         is_cycle_definition = True
                     elif gnum == 80:
-                        state.extra["active_cycle"] = None
-                        state.extra["cycle_initial_z"] = None
+                        state.siemens_state.active_cycle = None
+                        state.siemens_state.cycle_initial_z = None
             except Exception: continue
 
         if cycle_code:
-            state.extra["active_cycle"] = cycle_code
-            state.extra["cycle_initial_z"] = state.axes.get("Z", 0.0)
+            state.siemens_state.active_cycle = cycle_code
+            state.siemens_state.cycle_initial_z = state.axes.get("Z", 0.0)
 
-        if "R" in node.command_parameter: state.extra["cycle_r"] = float(node.command_parameter["R"])
-        if "Z" in node.command_parameter: state.extra["cycle_z"] = float(node.command_parameter["Z"])
+        if "R" in node.command_parameter: state.siemens_state.cycle_r = float(node.command_parameter["R"])
+        if "Z" in node.command_parameter: state.siemens_state.cycle_z = float(node.command_parameter["Z"])
         if "F" in node.command_parameter:
             try: state.feed_rate = float(node.command_parameter["F"])
             except Exception: pass
         
-        active_cycle = state.extra.get("active_cycle")
+        active_cycle = state.siemens_state.active_cycle
         if not active_cycle:
             if self.next_handler is not None: return self.next_handler.handle(node, state)
             return None, None
@@ -915,14 +915,14 @@ class SiemensISOCyclesHandler(Handler):
         state.axes["X"] = dest_x
         state.axes["Y"] = dest_y
 
-        r_level = state.extra.get("cycle_r", start_z)
+        r_level = state.siemens_state.cycle_r if state.siemens_state.cycle_r is not None else start_z
         if is_inc: r_abs = start_z + r_level
         else: r_abs = r_level
         
         points.append(Point(x=dest_x, y=dest_y, z=r_abs))
         state.axes["Z"] = r_abs
 
-        z_param = state.extra.get("cycle_z", r_abs)
+        z_param = state.siemens_state.cycle_z if state.siemens_state.cycle_z is not None else r_abs
         if is_inc: z_bottom = r_abs + z_param
         else: z_bottom = z_param
         
@@ -934,7 +934,7 @@ class SiemensISOCyclesHandler(Handler):
         points.append(Point(x=dest_x, y=dest_y, z=z_bottom))
         state.axes["Z"] = z_bottom
 
-        return_mode = state.extra.get("cycle_return_mode", 98)
+        return_mode = state.siemens_state.cycle_return_mode if state.siemens_state.cycle_return_mode is not None else 98
         retract_z = start_z if return_mode == 98 else r_abs
         
         points.append(Point(x=dest_x, y=dest_y, z=retract_z))

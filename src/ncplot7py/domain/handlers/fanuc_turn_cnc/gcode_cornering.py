@@ -24,7 +24,8 @@ class FanucCorneringHandler(Handler):
 
     def _get_active_plane_axes(self, state: CNCState) -> Tuple[str, str]:
         # Determine the active plane (G17: X-Y, G18: Z-X, G19: Y-Z)
-        plane = getattr(state, "extra", {}).get("g_group_16_plane", "X_Z")
+        channel_state = getattr(state, "channel_state", None)
+        plane = (channel_state.plane if channel_state is not None and channel_state.plane is not None else getattr(state, "extra", {}).get("g_group_16_plane")) or "X_Z"
         if hasattr(plane, "value"):
             plane = plane.value
         plane_name = str(plane)

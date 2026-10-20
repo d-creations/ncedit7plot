@@ -84,7 +84,7 @@ class StarG161StepCycleHandler(Handler):
                 "traversal": "FEED",
                 "source_code": "G161",
             }])
-        state.extra["star.g161"] = {
+        state.star_state.g161 = {
             "parameters": asdict(parameters),
             "endpoint": {axis: state.get_axis(axis) for axis in endpoint_words},
             "geometry_available": bool(endpoint_words),
@@ -97,18 +97,18 @@ class StarG161StepCycleHandler(Handler):
         return result_points, result_duration
 
     def _validate_runtime(self, node: NCCommandNode, state: CNCState, has_endpoint: bool) -> None:
-        speed_mode = self._mode_value(state.extra.get("surface_speed_mode"))
+        speed_mode = self._mode_value(state.spindle_limits.surface_speed_mode)
         if speed_mode == "CONSTANT_CUTSPEED":
             self._error(node, 3712, "G161 cannot execute during G96 mode", "G96")
 
-        feed_mode = self._mode_value(state.extra.get("feed_mode"))
+        feed_mode = self._mode_value(state.channel_state.feed_mode)
         if feed_mode != "FEED_PER_REV":
             self._error(node, 3729, "G161 requires G99 feed-per-revolution mode", str(feed_mode))
 
         if has_endpoint and float(state.spindle_speed or 0.0) <= 0.0:
             self._error(node, 3730, "G161 requires a positive spindle speed", str(state.spindle_speed))
 
-        control_mode = str(state.extra.get("control_mode", "MACHINING")).upper()
+        control_mode = str(state.channel_state.control_mode or "MACHINING").upper()
         if control_mode == "MACHINING" and not getattr(state.machine_config, "step_cycle_pro_enabled", False):
             self._error(node, 3727, "Step Cycle Pro option is required for G161 in MACHINING mode", "G161")
 

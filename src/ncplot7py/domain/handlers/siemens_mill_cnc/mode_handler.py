@@ -29,9 +29,9 @@ class SiemensModeHandler(Handler):
                 continue
 
             if gnum == 290:
-                state.extra["siemens_mode"] = True
+                state.siemens_state.siemens_mode = True
             elif gnum == 291:
-                state.extra["siemens_mode"] = False
+                state.siemens_state.siemens_mode = False
 
         if self.next_handler is not None:
             return self.next_handler.handle(node, state)

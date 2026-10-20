@@ -54,15 +54,15 @@ class FanucTurnSpeedModeHandler(Handler):
 
         if has96:
             try:
-                state.extra["surface_speed_mode"] = SpeedMode.CONSTANT_CUTSPEED
+                state.spindle_limits.surface_speed_mode = SpeedMode.CONSTANT_CUTSPEED
             except Exception:
-                state.extra["surface_speed_mode"] = SpeedMode.CONSTANT_CUTSPEED.value
+                state.spindle_limits.surface_speed_mode = SpeedMode.CONSTANT_CUTSPEED.value
 
         if has97:
             try:
-                state.extra["surface_speed_mode"] = SpeedMode.CONSTANT_REV
+                state.spindle_limits.surface_speed_mode = SpeedMode.CONSTANT_REV
             except Exception:
-                state.extra["surface_speed_mode"] = SpeedMode.CONSTANT_REV.value
+                state.spindle_limits.surface_speed_mode = SpeedMode.CONSTANT_REV.value
 
         if self.next_handler is not None:
             return self.next_handler.handle(node, state)

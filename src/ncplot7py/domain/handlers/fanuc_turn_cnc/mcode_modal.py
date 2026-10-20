@@ -12,7 +12,7 @@ class FanucTurnModalMCodeHandler(BaseModalMCodeHandler):
     def _apply_machine_specific_state(self, m_code: Optional[str], state: CNCState) -> None:
         if m_code in {"M3", "M4"}:
             state.set_machining_mode("turning")
-            state.extra["fanuc_turn_spindle_stopped"] = False
+            state.fanuc_state.turn_spindle_stopped = False
             state.spindle_state["main"] = {
                 "direction": m_code,
                 "active": True,
@@ -24,7 +24,7 @@ class FanucTurnModalMCodeHandler(BaseModalMCodeHandler):
                 "active": False,
                 "speed": 0.0,
             }
-            state.extra["fanuc_turn_spindle_stopped"] = True
+            state.fanuc_state.turn_spindle_stopped = True
             state.set_machining_mode("milling")
         elif m_code in {"M36", "M37", "M46", "M47", "M56", "M57"}:
             state.set_machining_mode("milling")

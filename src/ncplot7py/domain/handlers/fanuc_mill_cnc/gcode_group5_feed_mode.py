@@ -46,9 +46,9 @@ class FanucMillGroup5FeedModeHandler(Handler):
 
         if mode is not None:
             try:
-                state.extra["feed_mode"] = mode
+                state.channel_state.feed_mode = mode
             except Exception:
-                state.extra["feed_mode"] = mode.value
+                state.channel_state.feed_mode = mode.value
 
         if self.next_handler is not None:
             return self.next_handler.handle(node, state)

@@ -14,7 +14,7 @@ class FanucTurnSpindleLimitHandler(Handler):
     def handle(self, node: NCCommandNode, state: CNCState) -> Tuple[Optional[List], Optional[float]]:
         has_g50 = any(str(code).strip().upper() in {"G50", "G050"} for code in node.g_code)
         if has_g50 and "S" in node.command_parameter:
-            state.extra["spindle_speed_maximum"] = float(node.command_parameter.pop("S"))
+            state.spindle_limits.spindle_speed_maximum = float(node.command_parameter.pop("S"))
 
         if self.next_handler is not None:
             return self.next_handler.handle(node, state)

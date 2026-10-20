@@ -46,7 +46,7 @@ class StarG266Handler(Handler):
             except (TypeError, ValueError):
                 self._error(node, 3687, "G266 argument must be numeric", word)
 
-        state.extra["star.g266.parameters"] = dict(values)
+        state.star_state.g266_parameters = dict(values)
         for word, variable in self.VARIABLE_MAP.items():
             if word in values:
                 state.parameters[variable] = values[word]

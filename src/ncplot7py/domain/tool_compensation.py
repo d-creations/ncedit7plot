@@ -56,8 +56,8 @@ def load_tool_data(state, tool_values: list, tool_offsets: list) -> None:
         if key in offsets:
             raise ValueError("Duplicate offset record")
         offsets[key] = values(record)
-    state.extra["tool_compensation_data"] = tools
-    state.extra["tool_offset_data"] = offsets
+    state.tool_state.tool_compensation_data = tools
+    state.tool_state.tool_offset_data = offsets
 
 
 @dataclass
@@ -84,6 +84,12 @@ class ToolDataResolver:
 
     @staticmethod
     def active_tool_id(state) -> object:
+        tool_state = getattr(state, "tool_state", None)
+        if tool_state is not None:
+            if tool_state.active_tool_number is not None:
+                return tool_state.active_tool_number
+            if tool_state.active_tool_name is not None:
+                return tool_state.active_tool_name
         tool_id = state.extra.get("active_tool_number")
         if tool_id is None:
             tool_id = state.extra.get("active_tool_name")
@@ -91,10 +97,11 @@ class ToolDataResolver:
 
     def resolve(self, state, require_offset: bool = True) -> ActiveToolGeometry:
         tool_id = self.active_tool_id(state)
-        tool_values = state.extra.get("tool_compensation_data", {})
+        tool_state = getattr(state, "tool_state", None)
+        tool_values = (tool_state.tool_compensation_data if tool_state is not None and tool_state.tool_compensation_data else state.extra.get("tool_compensation_data", {}))
         values = tool_values.get(tool_id, {}) if tool_id is not None else {}
-        register = state.extra.get("active_offset_number")
-        offsets = state.extra.get("tool_offset_data", {})
+        register = tool_state.active_offset_number if tool_state is not None and tool_state.active_offset_number is not None else state.extra.get("active_offset_number")
+        offsets = (tool_state.tool_offset_data if tool_state is not None and tool_state.tool_offset_data else state.extra.get("tool_offset_data", {}))
         if register == 0:
             values = {}
         elif offsets:
@@ -177,7 +184,8 @@ class ToolPathCompensator:
             self.reset()
             return points
 
-        plane = str(state.extra.get("g_group_16_plane", "X_Y"))
+        channel_state = getattr(state, "channel_state", None)
+        plane = str((channel_state.plane if channel_state is not None and channel_state.plane is not None else state.extra.get("g_group_16_plane")) or "X_Y")
         axes = self._PLANE_AXES.get(plane)
         if axes is None:
             self.reset()
@@ -236,7 +244,8 @@ class ToolPathCompensator:
         radius: float,
     ) -> Optional[Tuple[float, float]]:
         config = getattr(state, "machine_config", None)
-        if config is None or not str(getattr(config, "name", "")).startswith("FANUC_STAR"):
+        policy = getattr(config, "tool_selection", {}) if config is not None else {}
+        if not isinstance(policy, dict) or policy.get("mode") != "star":
             return None
         if plane != "X_Z":
             return None

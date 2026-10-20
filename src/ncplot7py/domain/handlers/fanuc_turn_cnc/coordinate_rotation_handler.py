@@ -24,16 +24,16 @@ class FanucCoordinateRotationHandler(Handler):
             cancel_codes.add("G69")
 
         if codes.intersection(cancel_codes):
-            state.extra.pop("fanuc.coordinate_rotation", None)
-            state.extra.pop("fanuc.coordinate_rotation.logical_axes", None)
-            state.extra.pop("fanuc.coordinate_rotation.requires_absolute", None)
+            state.fanuc_state.coordinate_rotation = None
+            state.fanuc_state.coordinate_rotation_logical_axes = None
+            state.fanuc_state.coordinate_rotation_requires_absolute = None
             return super().handle(node, state)
 
         if "G68.1" in codes:
             self._activate(node, state)
             return super().handle(node, state)
 
-        rotation = state.extra.get("fanuc.coordinate_rotation")
+        rotation = state.fanuc_state.coordinate_rotation
         if not isinstance(rotation, dict):
             return super().handle(node, state)
         if codes.intersection(self.REFERENCE_CODES | self.COORDINATE_CHANGE_CODES):
@@ -42,12 +42,12 @@ class FanucCoordinateRotationHandler(Handler):
             self._error(node, 687, "Canned cycles are not allowed during G68.1 coordinate rotation", str(sorted(codes)))
         if not self._has_motion_words(node):
             return super().handle(node, state)
-        if state.extra.get("fanuc.coordinate_rotation.requires_absolute") and {
+        if state.fanuc_state.coordinate_rotation_requires_absolute and {
             "U", "V", "W", "H"
         }.intersection(node.command_parameter):
             self._error(node, 682, "The first move after G68.1 must use absolute coordinates", "")
 
-        logical_axes = dict(state.extra.get("fanuc.coordinate_rotation.logical_axes", state.axes))
+        logical_axes = dict(state.fanuc_state.coordinate_rotation_logical_axes or state.axes)
         logical_target = dict(logical_axes)
         self._apply_program_words(logical_target, node.command_parameter, state)
         transformed = self._rotate_target(logical_target, rotation)
@@ -55,8 +55,8 @@ class FanucCoordinateRotationHandler(Handler):
         self._rotate_arc_offsets(node, rotation, state)
 
         result = super().handle(node, state)
-        state.extra["fanuc.coordinate_rotation.logical_axes"] = logical_target
-        state.extra["fanuc.coordinate_rotation.requires_absolute"] = False
+        state.fanuc_state.coordinate_rotation_logical_axes = logical_target
+        state.fanuc_state.coordinate_rotation_requires_absolute = False
         return result
 
     def _activate(self, node: NCCommandNode, state: CNCState) -> None:
@@ -85,15 +85,15 @@ class FanucCoordinateRotationHandler(Handler):
         if angle < -360000.0 or angle > 360000.0:
             self._error(node, 686, "G68.1 angle is outside the supported range", str(angle))
 
-        state.extra["fanuc.coordinate_rotation"] = {
+        state.fanuc_state.coordinate_rotation = {
             "active": True,
             "plane": plane,
             "ordered_axes": ordered_axes,
             "center": center,
             "angle": angle,
         }
-        state.extra["fanuc.coordinate_rotation.logical_axes"] = logical_axes
-        state.extra["fanuc.coordinate_rotation.requires_absolute"] = True
+        state.fanuc_state.coordinate_rotation_logical_axes = logical_axes
+        state.fanuc_state.coordinate_rotation_requires_absolute = True
         for word in list(node.command_parameter):
             node.command_parameter.pop(word, None)
 
@@ -150,7 +150,8 @@ class FanucCoordinateRotationHandler(Handler):
 
     @staticmethod
     def _plane(state: CNCState) -> Tuple[str, Tuple[str, str]]:
-        value = str(getattr(state.extra.get("g_group_16_plane", "X_Z"), "value", state.extra.get("g_group_16_plane", "X_Z")))
+        raw_plane = state.channel_state.plane or "X_Z"
+        value = str(getattr(raw_plane, "value", raw_plane))
         if value.endswith("X_Y"):
             return "G17", ("X", "Y")
         if value.endswith("Y_Z"):

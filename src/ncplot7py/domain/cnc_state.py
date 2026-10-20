@@ -7,8 +7,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, asdict
 from copy import deepcopy
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
+from ncplot7py.domain.cnc_substates import (
+    ChannelRuntimeState,
+    ExtraStateMapping,
+    FanucChannelState,
+    SiemensChannelState,
+    SpindleSpeedState,
+    StarChannelState,
+    ToolSelectionState,
+)
 from ncplot7py.domain.tool_compensation import ToolCompensationState
 
 # Import MachineConfig (using string forward ref or direct import if possible)
@@ -133,14 +142,31 @@ class CNCState:
     # Misc
     line_number: int = 0
     loop_command: List[str] = field(default_factory=list)
-    extra: Dict[str, object] = field(default_factory=dict)
+    channel_state: ChannelRuntimeState = field(default_factory=ChannelRuntimeState)
+    tool_state: ToolSelectionState = field(default_factory=ToolSelectionState)
+    spindle_limits: SpindleSpeedState = field(default_factory=SpindleSpeedState)
+    fanuc_state: FanucChannelState = field(default_factory=FanucChannelState)
+    siemens_state: SiemensChannelState = field(default_factory=SiemensChannelState)
+    star_state: StarChannelState = field(default_factory=StarChannelState)
+    extra: ExtraStateMapping = field(default_factory=ExtraStateMapping)
     
     # Machine Configuration & MachineState
     machine_config: Optional[MachineConfig] = field(default=None)
     machine_state: Optional[MachineState] = field(default=None)
 
     def __setattr__(self, name, value):
+        if name == "extra" and not isinstance(value, ExtraStateMapping):
+            mapping = ExtraStateMapping(owner=self)
+            if isinstance(value, dict):
+                mapping.update(value)
+            value = mapping
         object.__setattr__(self, name, value)
+        if name == "extra" and isinstance(value, ExtraStateMapping):
+            value.bind(self)
+        elif name in {"channel_state", "tool_state", "spindle_limits", "fanuc_state", "siemens_state", "star_state"}:
+            extra = getattr(self, "extra", None)
+            if isinstance(extra, ExtraStateMapping):
+                extra.sync_from_substates()
         if name == "machine_config":
             if getattr(self, "machine_state", None) is not None and value is not None:
                 self.machine_state.machine_config = value
@@ -151,6 +177,8 @@ class CNCState:
             self._apply_machine_config_defaults()
 
     def __post_init__(self):
+        if isinstance(self.extra, ExtraStateMapping):
+            self.extra.bind(self)
         if self.machine_config is None and get_machine_config is not None:
             self.machine_config = get_machine_config("FANUC_MILL")
 
@@ -168,8 +196,16 @@ class CNCState:
         if config is None:
             return
 
+        channel_state = getattr(self, "channel_state", None)
+        if channel_state is not None:
+            if channel_state.feed_mode is None:
+                channel_state.feed_mode = config.default_feed_mode
+            if channel_state.polar_interpolate_axis is None:
+                channel_state.polar_interpolate_axis = config.polar_interpolate_axis
         extra = getattr(self, "extra", None)
-        if isinstance(extra, dict):
+        if isinstance(extra, ExtraStateMapping):
+            extra.sync_from_substates()
+        elif isinstance(extra, dict):
             if "feed_mode" not in extra:
                 extra["feed_mode"] = config.default_feed_mode
             if "polar_interpolate_axis" not in extra:
@@ -185,16 +221,21 @@ class CNCState:
 
     def clone(self) -> "CNCState":
         """Return a deep copy of the state for transactional updates."""
-        return deepcopy(self)
+        cloned = deepcopy(self)
+        if isinstance(cloned.extra, ExtraStateMapping):
+            cloned.extra.bind(cloned)
+        return cloned
 
     def as_dict(self) -> Dict:
         """Serialize to a plain dict (helpful for debugging/tests)."""
+        if isinstance(self.extra, ExtraStateMapping):
+            self.extra.sync_from_substates()
         return asdict(self)
 
     # --- axis helpers -------------------------------------------------
     def get_axis(self, name: AxisName) -> Numeric:
         # Check if mapped to a physical axis
-        axis_map = self.extra.get("axis_map") if isinstance(self.extra, dict) else None
+        axis_map = self.channel_state.axis_map or (self.extra.get("axis_map") if isinstance(self.extra, dict) else None)
         phys = axis_map.get(name) if isinstance(axis_map, dict) else None
         if phys and self.machine_state is not None and phys in self.machine_state.physical_axes:
             return self.machine_state.get_axis(phys)
@@ -223,7 +264,7 @@ class CNCState:
 
         # Synchronize with shared MachineState
         if self.machine_state is not None:
-            axis_map = self.extra.get("axis_map") if isinstance(self.extra, dict) else None
+            axis_map = self.channel_state.axis_map or (self.extra.get("axis_map") if isinstance(self.extra, dict) else None)
             phys = axis_map.get(name) if isinstance(axis_map, dict) else None
             if phys:
                 self.machine_state.set_axis(phys, val)
@@ -405,4 +446,14 @@ class CNCState:
         return float(s ** 0.5)
 
 
-__all__ = ["CNCState", "MachineState"]
+__all__ = [
+    "CNCState",
+    "MachineState",
+    "ChannelRuntimeState",
+    "ToolSelectionState",
+    "SpindleSpeedState",
+    "FanucChannelState",
+    "SiemensChannelState",
+    "StarChannelState",
+    "ExtraStateMapping",
+]

@@ -8,7 +8,7 @@ from ncplot7py.domain.cnc_state import CNCState
 
 def ensure_siemens_scope(state: CNCState) -> Dict[str, Any]:
     """Return the Siemens runtime scope, creating default containers as needed."""
-    scope = state.extra.setdefault("siemens", {})
+    scope = state.siemens_state.scope
     defaults = {
         "symbols": {},
         "types": {},

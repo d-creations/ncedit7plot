@@ -41,11 +41,11 @@ class SiemensGroup6PlaneHandler(Handler):
             raise_nc_error(ExceptionTyps.NCCodeErrors, 120, message="Conflicting plane selection codes (G17/G18/G19)", value=str(node.g_code))
 
         if has17:
-            state.extra["g_group_16_plane"] = "X_Y"
+            state.channel_state.plane = "X_Y"
         if has18:
-            state.extra["g_group_16_plane"] = "X_Z"
+            state.channel_state.plane = "X_Z"
         if has19:
-            state.extra["g_group_16_plane"] = "Y_Z"
+            state.channel_state.plane = "Y_Z"
 
         if self.next_handler is not None:
             return self.next_handler.handle(node, state)

@@ -164,10 +164,8 @@ class NCExecutionEngine:
         if state is None:
             return {}
 
-        extra = getattr(state, "extra", None)
-        if not isinstance(extra, dict):
-            return {}
-        siemens = extra.get("siemens")
+        siemens_state = getattr(state, "siemens_state", None)
+        siemens = siemens_state.scope if siemens_state is not None and siemens_state.scope else (getattr(state, "extra", {}).get("siemens") if isinstance(getattr(state, "extra", None), dict) else None)
         if not isinstance(siemens, dict):
             return {}
 
@@ -432,21 +430,18 @@ class NCExecutionEngine:
                 physical_channel = canal_index + 1
                 pose_channel = channel_number if channel_number is not None and len(tool_paths) == 1 else physical_channel
                 state = self.cnc_control.get_nc_state(physical_channel)
-                pose_tools = getattr(state, "extra", {}).get("pose_tools", {}) if state is not None else {}
+                channel_state = getattr(state, "channel_state", None) if state is not None else None
+                pose_tools = (channel_state.pose_tools if channel_state is not None and channel_state.pose_tools else getattr(state, "extra", {}).get("pose_tools", {})) if state is not None else {}
                 config = getattr(state, "machine_config", None) if state is not None else None
                 tool = pose_tools.get(tool_number) if isinstance(pose_tools, dict) else None
                 if config is not None and getattr(config, "simulation", None) and tool is not None:
                     try:
+                        from ncplot7py.domain.tool_pose import project_simulation_poses
                         point_data = [{"x": point_x, "y": point_y, "z": point_z} for point_x, point_y, point_z in zip(x, y, z)]
-                        if config.simulation.get("modelId") == "MILL_DEMO":
-                            from ncplot7py.domain.tool_pose import project_mill_demo_poses
-                            plot_line["poses"] = project_mill_demo_poses(point_data, context, tool["mountingOrientationDegrees"])
-                        elif config.simulation.get("modelId") in {"STAR_SR20R_IV_B", "STAR_SV20R", "STAR_SG42"}:
-                            from ncplot7py.domain.tool_pose import project_fixed_target_poses
-                            plot_line["poses"] = project_fixed_target_poses(
-                                point_data, context, tool["mountingOrientationDegrees"],
-                                config.simulation, str(pose_channel), tool_number, tool["reference"],
-                            )
+                        plot_line["poses"] = project_simulation_poses(
+                            point_data, context, tool["mountingOrientationDegrees"],
+                            config.simulation, str(pose_channel), tool_number, tool["reference"],
+                        )
                     except Exception as pose_error:
                         self._add_error(pose_error, line=line_number or 0, canal=physical_channel)
                         error = True

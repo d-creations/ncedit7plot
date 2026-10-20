@@ -28,13 +28,13 @@ class SiemensISOPolarHandler(Handler):
                 if g.upper().startswith("G"):
                     gnum = int(g[1:])
                     if gnum == 15:
-                        state.extra["polar_mode"] = False
+                        state.channel_state.polar_mode = False
                     elif gnum == 16:
-                        state.extra["polar_mode"] = True
+                        state.channel_state.polar_mode = True
             except Exception:
                 continue
 
-        if state.extra.get("polar_mode", False):
+        if state.channel_state.polar_mode:
             # Convert X(Radius), Y(Angle) to X, Y Cartesian
             # Only if X and Y are present
             if "X" in node.command_parameter and "Y" in node.command_parameter:

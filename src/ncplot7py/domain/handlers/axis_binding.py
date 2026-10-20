@@ -23,9 +23,9 @@ class AxisBindingHandler(Handler):
         if not isinstance(bindings, dict) or not bindings:
             return
 
-        channel_id = str(state.extra.get("path_number", 1))
-        axis_map: Dict[str, str] = state.extra.setdefault("axis_map", {})
-        target_carriers: Dict[str, str] = state.extra.setdefault("target_carriers", {})
+        channel_id = str(state.channel_state.path_number or 1)
+        axis_map: Dict[str, str] = state.channel_state.axis_map
+        target_carriers: Dict[str, str] = state.channel_state.target_carriers
 
         # Initialize defaults for this channel
         for logical_axis, binding in bindings.items():
@@ -41,8 +41,10 @@ class AxisBindingHandler(Handler):
                     if carrier_id:
                         target_carriers[logical_axis] = carrier_id
                         if logical_axis == "C":
-                            state.extra.setdefault("star.targetCarrierId", carrier_id)
-                            state.extra.setdefault("star.targetAxis", axis_id)
+                            if state.star_state.target_carrier_id is None:
+                                state.star_state.target_carrier_id = carrier_id
+                            if state.star_state.target_axis is None:
+                                state.star_state.target_axis = axis_id
 
         # Process dynamic M-code overrides
         if node is not None:
@@ -67,11 +69,11 @@ class AxisBindingHandler(Handler):
                         if carrier_id:
                             target_carriers[logical_axis] = carrier_id
                             if logical_axis == "C":
-                                state.extra["star.targetCarrierId"] = carrier_id
+                                state.star_state.target_carrier_id = carrier_id
                         if logical_axis == "C":
-                            state.extra["star.path_mode"] = m_code
+                            state.star_state.path_mode = m_code
                             if axis_id:
-                                state.extra["star.targetAxis"] = axis_id
+                                state.star_state.target_axis = axis_id
 
 
 __all__ = ["AxisBindingHandler"]

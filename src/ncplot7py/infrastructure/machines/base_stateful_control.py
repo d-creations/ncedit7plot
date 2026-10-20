@@ -1,27 +1,15 @@
 import re
-import logging
 from typing import Dict, List, Optional, Tuple, Sequence, Type, Any
 
 from ncplot7py.interfaces.BaseNCCanal import NCControl as BaseNCControlInterface
 from ncplot7py.interfaces.BaseNCControl import NCCanal as BaseNCCanalInterface
-from ncplot7py.domain.cnc_state import CNCState
-from ncplot7py.domain.exceptions import ExceptionNode, ExceptionTyps, raise_nc_error
+from ncplot7py.domain.canal_interpreter import CanalProgramInterpreter
+from ncplot7py.domain.cnc_state import CNCState, MachineState
+from ncplot7py.domain.machines import get_machine_config
 from ncplot7py.domain.tool_compensation import ToolPathCompensator
+from ncplot7py.infrastructure.handler_chain_builder import HANDLER_REGISTRY, HandlerChainBuilder
 from ncplot7py.shared.nc_nodes import NCCommandNode
 from ncplot7py.shared.point import Point
-
-
-def _format_node_debug(node: Optional[NCCommandNode]) -> Dict[str, Any]:
-    if node is None:
-        return {}
-    return {
-        "line": getattr(node, "nc_code_line_nr", None),
-        "g_code": sorted(getattr(node, "g_code", set()) or []),
-        "command_parameter": dict(getattr(node, "command_parameter", {}) or {}),
-        "loop_command": repr(getattr(node, "loop_command", None)),
-        "variable_command": repr(getattr(node, "variable_command", None)),
-        "dddp_command": sorted(getattr(node, "dddp_command", set()) or []),
-    }
 
 
 def _plane_from_default_code(default_plane: str) -> str:
@@ -34,13 +22,16 @@ def _plane_from_default_code(default_plane: str) -> str:
 
 
 class BaseStatefulCanal(BaseNCCanalInterface):
-    """Base canal implementing standard execution and control flow logic."""
+    """Base canal delegating step-by-step program execution to CanalProgramInterpreter."""
 
     def __init__(self, name: str, init_state: Optional[CNCState] = None):
         self._name = name
         self._state = init_state or CNCState()
         match = re.search(r"(\d+)$", str(name))
-        self._state.extra.setdefault("path_number", int(match.group(1)) if match else 1)
+        if self._state.channel_state.path_number is None:
+            self._state.channel_state.path_number = int(match.group(1)) if match else 1
+        self._tool_path_compensator = ToolPathCompensator()
+        self._interpreter = CanalProgramInterpreter(self._tool_path_compensator)
         self._initialize_configured_target()
         self._chain = None
         self._control_handler = None
@@ -48,26 +39,9 @@ class BaseStatefulCanal(BaseNCCanalInterface):
         self._tool_path: List[Tuple[List[Point], float]] = []
         self._tool_nodes: List[NCCommandNode] = []
         self._exec_sequence: List[NCCommandNode] = []
-        self._tool_path_compensator = ToolPathCompensator()
 
     def _initialize_configured_target(self) -> None:
-        from ncplot7py.domain.handlers.axis_binding import AxisBindingHandler
-        AxisBindingHandler.apply_bindings(self._state)
-
-        config = getattr(self._state, "machine_config", None)
-        simulation = getattr(config, "simulation", None)
-        if not isinstance(simulation, dict):
-            return
-        channel_id = str(self._state.extra.get("path_number", 1))
-        for mount in simulation.get("toolMounts", []):
-            target = mount.get("target", {})
-            if str(mount.get("channelId")) not in (channel_id, str(self._name)) or target.get("mode") != "execution":
-                continue
-            carrier = target.get("defaultWorkpieceCarrierId")
-            if carrier:
-                self._state.extra.setdefault("star.targetCarrierId", carrier)
-                self._state.extra.setdefault("star.targetAxis", self._axis_for_workpiece(simulation, carrier))
-            break
+        CanalProgramInterpreter.initialize_configured_target(self._name, self._state)
 
     def get_name(self) -> str:
         return self._name
@@ -81,93 +55,14 @@ class BaseStatefulCanal(BaseNCCanalInterface):
         return getattr(self, "_exec_sequence", self._nodes)
 
     def _capture_motion_context(self, start_axes: Optional[Dict[str, float]] = None) -> Dict[str, object]:
-        """Detach state required by later kinematics from this exact motion."""
-        configured_axes = getattr(self._state.machine_config, "axes", ())
-        axes = {
-            axis: float(self._state.axes[axis])
-            for axis in configured_axes
-            if axis in self._state.axes
-        }
-        compensation = self._state.tool_compensation
-        tool_offset = {
-            "number": self._state.extra.get("active_offset_number"),
-            "radiusMode": compensation.radius_mode,
-            "radius": compensation.radius,
-            "tipOrientation": compensation.tip_orientation,
-            "edgeNumber": compensation.edge_number,
-        }
-        machining_mode = getattr(self._state, "machining_mode", "unknown")
-        if not machining_mode:
-            machining_mode = "unknown"
-        context = {
-            "channelId": str(self._name),
-            "startAxes": dict(start_axes) if start_axes is not None else dict(axes),
-            "endAxes": axes,
-            "toolOffset": {key: value for key, value in tool_offset.items() if value is not None},
-            "machiningMode": machining_mode,
-        }
-        c_axis_mode = self._state.extra.get("star.c_axis_mode") or self._state.extra.get("siemens.c_axis_mode")
-        if c_axis_mode:
-            context["workpieceRotationMode"] = c_axis_mode
-        target = self._resolve_motion_target()
-        if target is not None:
-            context.update(target)
-        if "workpieceRotationMode" not in context:
-            simulation = getattr(getattr(self._state, "machine_config", None), "simulation", None)
-            model_id = simulation.get("modelId") if isinstance(simulation, dict) else None
-            if isinstance(model_id, str) and model_id.startswith("STAR_"):
-                context["workpieceRotationMode"] = "spindleInvariant"
-        return context
+        return CanalProgramInterpreter.capture_motion_context(self._name, self._state, start_axes)
 
     def _resolve_motion_target(self) -> Optional[Dict[str, str]]:
-        """Resolve the executed tool carrier and workpiece target for this motion."""
-        config = getattr(self._state, "machine_config", None)
-        simulation = getattr(config, "simulation", None)
-        if not isinstance(simulation, dict):
-            return None
-
-        active_tool = self._state.extra.get("active_tool_number")
-        if active_tool is None:
-            active_tool = self._state.extra.get("active_tool_name")
-        channel_id = str(self._name)
-        for mount in simulation.get("toolMounts", []):
-            if str(mount.get("channelId")) != channel_id:
-                continue
-            selector = mount.get("tools", {})
-            selected = False
-            if selector.get("kind") == "numericRange" and type(active_tool) is int:
-                selected = selector.get("from", 1) <= active_tool <= selector.get("to", 0)
-            elif selector.get("kind") == "identifiers":
-                selected = active_tool in selector.get("values", [])
-            if not selected:
-                continue
-            target = mount.get("target", {})
-            if target.get("mode") == "fixed":
-                workpiece = target.get("workpieceCarrierId")
-                return {
-                    "toolCarrierId": str(mount["carrierId"]),
-                    "targetCarrierId": str(workpiece),
-                    "targetAxis": self._axis_for_workpiece(simulation, str(workpiece)),
-                }
-            selected_target = self._state.extra.get("star.targetCarrierId")
-            allowed = target.get("allowedWorkpieceCarrierIds", [])
-            if selected_target in allowed:
-                return {
-                    "toolCarrierId": str(mount["carrierId"]),
-                    "targetCarrierId": str(selected_target),
-                    "targetAxis": str(self._state.extra.get("star.targetAxis") or self._axis_for_workpiece(simulation, selected_target)),
-                }
-            return None
-        return None
+        return CanalProgramInterpreter.resolve_motion_target(self._name, self._state)
 
     @staticmethod
     def _axis_for_workpiece(simulation: Dict[str, object], carrier_id: str) -> str:
-        for carrier in simulation.get("carriers", []):
-            if carrier.get("id") != carrier_id:
-                continue
-            for joint in carrier.get("rotationChain", []):
-                return str(joint["axisId"])
-        return ""
+        return CanalProgramInterpreter.axis_for_workpiece(simulation, carrier_id)
 
     def _get_handler(self, handler_type: Type) -> Optional[Any]:
         """Utility to retrieve a specific instance of a handler from the chain."""
@@ -180,128 +75,18 @@ class BaseStatefulCanal(BaseNCCanalInterface):
 
     def run_nc_code_list(self, linked_code_list: List[NCCommandNode]) -> None:
         self._nodes = list(linked_code_list)
-        self._exec_sequence = []
         self._tool_path = []
         self._tool_nodes = []
-        self._tool_path_compensator.reset()
-
-        # link nodes in forward/backward direction
-        for i in range(len(self._nodes) - 1):
-            self._nodes[i]._next_ncCode = self._nodes[i + 1]
-            self._nodes[i + 1]._before_ncCode = self._nodes[i]
-
-        # provide nodes to control handlers so they can setup maps for jumping
-        current_handler = self._chain
-        while current_handler is not None:
-            if hasattr(current_handler, "setup_maps"):
-                try:
-                    current_handler.setup_maps(self._nodes)
-                except Exception:
-                    pass
-            current_handler = getattr(current_handler, "next_handler", None)
-
-        node = self._nodes[0] if len(self._nodes) > 0 else None
-        
-        config_max = getattr(self._state.machine_config, "max_execution_nodes", 0) if getattr(self._state, "machine_config", None) else 0
-        if config_max > 0:
-            max_steps = config_max
-        else:
-            max_steps = max(100000, len(self._nodes) * 100)
-            
-        steps = 0
-        logger = logging.getLogger(__name__)
-
-        while node is not None and steps < max_steps:
-            try:
-                self._exec_sequence.append(node)
-            except Exception:
-                pass
-
-            pts, dur = None, 0.0
-            start_axes = {
-                axis: float(self._state.axes[axis])
-                for axis in getattr(self._state.machine_config, "axes", ())
-                if axis in self._state.axes
-            }
-            if self._chain is not None:
-                try:
-                    pts, dur = self._chain.handle(node, self._state)
-                except ExceptionNode:
-                    raise
-                except Exception as exc:
-                    logger.error(
-                        "NC execution failure at line=%s node=%s prev=%s next=%s state_parameters=%s siemens=%s",
-                        getattr(node, "nc_code_line_nr", 0) or 0,
-                        _format_node_debug(node),
-                        _format_node_debug(getattr(node, "_before_ncCode", None)),
-                        _format_node_debug(getattr(node, "_next_ncCode", None)),
-                        dict(getattr(self._state, "parameters", {}) or {}),
-                        dict(getattr(getattr(self._state, "extra", {}), "get", lambda *_: {})("siemens", {}) or {}),
-                        exc_info=True,
-                    )
-                    raise_nc_error(
-                        ExceptionTyps.NCCodeErrors,
-                        1999,
-                        message=str(exc),
-                        value=str(exc),
-                        line=getattr(node, "nc_code_line_nr", 0) or 0,
-                    )
-
-            if logger.isEnabledFor(logging.DEBUG):
-                try:
-                    ln = getattr(node, 'nc_code_line_nr', None)
-                    g = getattr(node, 'g_code', None)
-                    logger.debug("node idx=%s line=%s g_code=%s -> pts=%s dur=%s", steps, ln, g, 'Y' if pts is not None else 'N', dur)
-                except Exception:
-                    logger.debug("node idx=%s -> pts=%s dur=%s", steps, 'Y' if pts is not None else 'N', dur)
-
-            if self._state.tool_compensation.radius_mode == "OFF":
-                self._tool_path_compensator.reset()
-
-            if pts is not None:
-                motion_node = node.copy()
-                active_tool = self._state.extra.get("active_tool_number")
-                if active_tool is None:
-                    active_tool = self._state.extra.get("active_tool_name")
-                motion_node.set_execution_metadata(
-                    execution_step=steps,
-                    tool_number=active_tool if active_tool is not None else "unknown",
-                    motion_context=self._capture_motion_context(start_axes),
-                )
-                generated_segments = getattr(node, "generated_motion_segments", [])
-                if generated_segments:
-                    for segment in generated_segments:
-                        segment_points = segment.get("points")
-                        if not isinstance(segment_points, list) or not segment_points:
-                            continue
-                        segment_node = motion_node.copy()
-                        segment_node.set_motion_metadata(
-                            str(segment.get("geometry", "LINEAR")),
-                            str(segment.get("traversal", "FEED")),
-                            str(segment.get("source_code", "G01")),
-                        )
-                        segment_node.set_generated_motion_segments([])
-                        projected_points = self._tool_path_compensator.project(segment_points, self._state)
-                        self._tool_path.append((projected_points, float(segment.get("duration", 0.0))))
-                        self._tool_nodes.append(segment_node)
-                else:
-                    projected_points = self._tool_path_compensator.project(pts, self._state)
-                    self._tool_path.append((projected_points, dur or 0.0))
-                    self._tool_nodes.append(motion_node)
-            else:
-                # For non-motion blocks containing wait codes (e.g. standalone wait codes M300; or WAITM(1, 1, 2)),
-                # create a 0-duration tool_path entry so executed nodes and synchronization pair correctly.
-                wait_info = getattr(node, "extra", {}).get("wait_code") if hasattr(node, "extra") and node.extra else None
-                if wait_info:
-                    non_motion_node = node.copy()
-                    self._tool_path.append(([], 0.0))
-                    self._tool_nodes.append(non_motion_node)
-
-            next_node = getattr(node, "_next_ncCode", None)
-            if next_node is node:
-                break
-            node = next_node
-            steps += 1
+        self._exec_sequence = []
+        self._interpreter.execute(
+            self._name,
+            self._nodes,
+            self._state,
+            self._chain,
+            tool_path=self._tool_path,
+            tool_nodes=self._tool_nodes,
+            exec_sequence=self._exec_sequence,
+        )
 
 
 class BaseStatefulControl(BaseNCControlInterface):
@@ -330,7 +115,6 @@ class BaseStatefulControl(BaseNCControlInterface):
             init_states.extend([None] * (self.count_of_canals - len(init_states)))
 
         # Coordinate shared MachineState across canals if not explicitly isolated
-        from ncplot7py.domain.cnc_state import MachineState
         shared_machine_state: Optional[MachineState] = None
         for s in init_states:
             if s is not None and getattr(s, "machine_state", None) is not None:
@@ -341,7 +125,6 @@ class BaseStatefulControl(BaseNCControlInterface):
         for idx in range(self.count_of_canals):
             st = init_states[idx]
             if st is None:
-                from ncplot7py.domain.cnc_state import CNCState
                 st = CNCState()
                 init_states[idx] = st
             if shared_machine_state is None and st.machine_state is not None:
@@ -396,120 +179,25 @@ class BaseStatefulControl(BaseNCControlInterface):
         return None
 
 
-# --- UNIVERSAL CONFIG-DRIVEN CONTROL ---
-
-HANDLER_REGISTRY = {
-    # Core
-    "axis_binding": ("ncplot7py.domain.handlers.axis_binding", "AxisBindingHandler"),
-    "variable": ("ncplot7py.domain.handlers.variable", "VariableHandler"),
-    "fanuc_alarm": ("ncplot7py.domain.handlers.fanuc_alarm", "FanucAlarmHandler"),
-    "control_flow": ("ncplot7py.domain.handlers.control_flow", "ControlFlowHandler"),
-    
-    # Base
-    "motion": ("ncplot7py.domain.handlers.motion", "MotionHandler"),
-    "modal": ("ncplot7py.domain.handlers.modal", "ModalHandler"),
-    "fanuc_mill_mcode_modal": ("ncplot7py.domain.handlers.fanuc_mill_cnc.mcode_modal", "FanucMillModalMCodeHandler"),
-    "fanuc_turn_mcode_modal": ("ncplot7py.domain.handlers.fanuc_turn_cnc.mcode_modal", "FanucTurnModalMCodeHandler"),
-    "star_mcode_modal": ("ncplot7py.domain.handlers.star_machine.mcode_modal", "StarModalMCodeHandler"),
-    "siemens_mill_mcode_modal": ("ncplot7py.domain.handlers.siemens_mill_cnc.mcode_modal", "SiemensMillModalMCodeHandler"),
-    "star_spindle": ("ncplot7py.domain.handlers.star_machine.spindle_handler", "StarSpindleHandler"),
-    "fanuc_turn_spindle": ("ncplot7py.domain.handlers.fanuc_turn_cnc.spindle_handler", "FanucTurnSpindleHandler"),
-    "spindle_speed": ("ncplot7py.domain.handlers.modal", "ModalHandler"),
-    "wait_code": ("ncplot7py.domain.handlers.wait_code", "WaitCodeHandler"),
-    "fanuc_tool_handler": ("ncplot7py.domain.handlers.fanuc_machine.tool_handler", "FanucToolHandler"),
-    "siemens_tool_handler": ("ncplot7py.domain.handlers.siemens_machine.tool_handler", "SiemensToolHandler"),
-    "star_fanuc_tool_handler": ("ncplot7py.domain.handlers.star_machine.tool_handler", "StarFanucToolHandler"),
-    "cycle_end": ("ncplot7py.domain.handlers.cycle_end", "CycleEnd"),
-    
-    # Generic & Fanuc
-    "group_0_coordinate_set": ("ncplot7py.domain.handlers.fanuc_turn_cnc.gcode_group0_coordinate_set", "GCodeGroup0CoordinateSetExecChainLink"),
-    "fanuc_turn_spindle_limit": ("ncplot7py.domain.handlers.fanuc_turn_cnc.spindle_limit_handler", "FanucTurnSpindleLimitHandler"),
-    "fanuc_turn_units": ("ncplot7py.domain.handlers.fanuc_turn_cnc.unit_handler", "FanucTurnUnitHandler"),
-    "fanuc_g92_threading": ("ncplot7py.domain.handlers.fanuc_turn_cnc.g92_threading_cycle", "FanucG92ThreadingCycleHandler"),
-    "fanuc_g76_threading": ("ncplot7py.domain.handlers.fanuc_turn_cnc.g76_threading_cycle", "FanucG76ThreadingCycleHandler"),
-    "fanuc_g36_circular_threading": ("ncplot7py.domain.handlers.fanuc_turn_cnc.g36_circular_threading", "FanucG36CircularThreadingHandler"),
-    "fanuc_coordinate_rotation": ("ncplot7py.domain.handlers.fanuc_turn_cnc.coordinate_rotation_handler", "FanucCoordinateRotationHandler"),
-    "fanuc_turn_drilling_cycles": ("ncplot7py.domain.handlers.fanuc_turn_cnc.drilling_cycle_handler", "FanucTurnDrillingCycleHandler"),
-    "group_2_speed_mode": ("ncplot7py.domain.handlers.fanuc_turn_cnc.gcode_group2_speed_mode", "FanucTurnSpeedModeHandler"),
-    "group_5_feed_mode": ("ncplot7py.domain.handlers.fanuc_turn_cnc.gcode_group5_feed_mode", "GCodeGroup5FeedModeExecChainLink"),
-    "group_16_plane": ("ncplot7py.domain.handlers.fanuc_turn_cnc.gcode_group16_plane", "GCodeGroup16PlaneExecChainLink"),
-    "group_21_polar": ("ncplot7py.domain.handlers.fanuc_turn_cnc.gcode_group21_polar_co", "GCodeGroup21PolarCoExecChainLink"),
-    "precheck": ("ncplot7py.domain.handlers.fanuc_turn_cnc.gcode_precheck", "GcodePreCheckExecChainLink"),
-    "fanuc_precheck": ("ncplot7py.domain.handlers.fanuc_turn_cnc.gcode_precheck", "GcodePreCheckExecChainLink"),
-    "cornering": ("ncplot7py.domain.handlers.fanuc_turn_cnc.gcode_cornering", "FanucCorneringHandler"),
-    
-    # Fanuc Mill Specific
-    "fanuc_mill_groups": ("ncplot7py.domain.handlers.fanuc_mill_cnc.gcode_groups", "FanucMillGCodeGroupValidator"),
-    "fanuc_mill_feed_mode": ("ncplot7py.domain.handlers.fanuc_mill_cnc.gcode_group5_feed_mode", "FanucMillGroup5FeedModeHandler"),
-    "fanuc_mill_speed_mode": ("ncplot7py.domain.handlers.fanuc_mill_cnc.gcode_speed_mode", "FanucMillSpeedModeHandler"),
-    "fanuc_mill_work_offset": ("ncplot7py.domain.handlers.fanuc_mill_cnc.gcode_work_offset", "FanucMillWorkOffsetHandler"),
-    "fanuc_mill_plane": ("ncplot7py.domain.handlers.fanuc_mill_cnc.gcode_group2_plane", "FanucMillGroup2PlaneHandler"),
-    "fanuc_cutter_comp": ("ncplot7py.domain.handlers.fanuc_mill_cnc.cutter_comp_handler", "FanucCutterCompCommandHandler"),
-    
-    # Turn Mill Star
-    "star_spindle_fluctuation": ("ncplot7py.domain.handlers.star_machine.spindle_fluctuation_handler", "StarSpindleFluctuationHandler"),
-    "star_automatic_coordinate": ("ncplot7py.domain.handlers.star_machine.automatic_coordinate_handler", "StarAutomaticCoordinateHandler"),
-    "star_g266": ("ncplot7py.domain.handlers.star_machine.g266_handler", "StarG266Handler"),
-    "star_b1_tilting": ("ncplot7py.domain.handlers.star_machine.b1_tilting_handler", "StarB1TiltingHandler"),
-    "star_g161_step_cycle": ("ncplot7py.domain.handlers.star_machine.g161_step_cycle_handler", "StarG161StepCycleHandler"),
-    "star_turn": ("ncplot7py.domain.handlers.star_machine.star_turn_handler", "StarTurnHandler"),
-    
-    # Siemens Specific
-    "siemens_alarm": ("ncplot7py.domain.handlers.siemens_mill_cnc.alarm_handler", "SiemensAlarmHandler"),
-    "siemens_variables": ("ncplot7py.domain.handlers.siemens_mill_cnc.variable_handler", "SiemensVariableHandler"),
-    "siemens_flow_control": ("ncplot7py.domain.handlers.siemens_mill_cnc.flow_control_handler", "SiemensFlowControlHandler"),
-    "siemens_builtins": ("ncplot7py.domain.handlers.siemens_mill_cnc.builtin_handler", "SiemensBuiltinHandler"),
-    "siemens_frames": ("ncplot7py.domain.handlers.siemens_mill_cnc.frame_handler", "SiemensFrameHandler"),
-    "siemens_transformations": ("ncplot7py.domain.handlers.siemens_mill_cnc.transformation_handler", "SiemensTransformationHandler"),
-    "siemens_path_mode": ("ncplot7py.domain.handlers.siemens_mill_cnc.path_mode_handler", "SiemensPathModeHandler"),
-    "siemens_mode": ("ncplot7py.domain.handlers.siemens_mill_cnc.mode_handler", "SiemensModeHandler"),
-    "siemens_named_cycles": ("ncplot7py.domain.handlers.siemens_mill_cnc.cycles_handler", "SiemensNamedCyclesHandler"),
-    "siemens_iso_cycles": ("ncplot7py.domain.handlers.siemens_mill_cnc.cycles_handler", "SiemensISOCyclesHandler"),
-    "siemens_iso_feed": ("ncplot7py.domain.handlers.siemens_mill_cnc.feed_handler", "SiemensISOFeedHandler"),
-    "siemens_iso_speed": ("ncplot7py.domain.handlers.siemens_mill_cnc.speed_handler", "SiemensISOSpeedHandler"),
-    "siemens_plane": ("ncplot7py.domain.handlers.siemens_mill_cnc.gcode_group6_plane", "SiemensGroup6PlaneHandler"),
-    "siemens_iso_polar": ("ncplot7py.domain.handlers.siemens_mill_cnc.polar_handler", "SiemensISOPolarHandler"),
-    "siemens_iso_tool_length": ("ncplot7py.domain.handlers.siemens_mill_cnc.tool_length_handler", "SiemensISOToolLengthHandler"),
-    "siemens_iso_cutter_comp": ("ncplot7py.domain.handlers.siemens_mill_cnc.cutter_comp_handler", "SiemensISOCutterCompHandler"),
-    "siemens_iso_coordinate": ("ncplot7py.domain.handlers.siemens_mill_cnc.coordinate_handler", "SiemensISOCoordinateHandler"),
-    "siemens_iso_inch_metric": ("ncplot7py.domain.handlers.siemens_mill_cnc.unit_handler", "SiemensISOInchMetricHandler"),
-    "siemens_iso_misc": ("ncplot7py.domain.handlers.siemens_mill_cnc.misc_handler", "SiemensISOMiscHandler"),
-    "siemens_motion": ("ncplot7py.domain.handlers.siemens_mill_cnc.motion_handler", "SiemensMotionHandler"),
-}
-
 class UniversalConfigDrivenCanal(BaseStatefulCanal):
     """Canal dynamically built from the machine config's `supported_gcode_groups`."""
     
     def __init__(self, name: str, init_state: Optional[CNCState] = None):
         super().__init__(name, init_state)
-        
-        # Imports here to avoid circular dep
-        from ncplot7py.infrastructure.handler_chain_builder import HandlerChainBuilder
-        from ncplot7py.domain.machines import get_machine_config
 
         if self._state.machine_config is None:
             self._state.machine_config = get_machine_config("FANUC_MILL")
 
         default_plane = _plane_from_default_code(self._state.machine_config.default_plane)
-        if self._state.machine_config.control_type == "SIEMENS":
-            self._state.extra["g_group_16_plane"] = default_plane
-            self._state.extra["siemens_mode"] = False
-        else:
-            self._state.extra["g_group_16_plane"] = default_plane
+        self._state.channel_state.plane = default_plane
+        if "siemens_mode" in self._state.machine_config.supported_gcode_groups:
+            self._state.siemens_state.siemens_mode = False
 
-        builder = HandlerChainBuilder()
+        self._chain = HandlerChainBuilder.from_groups(
+            self._state.machine_config.supported_gcode_groups,
+            registry=HANDLER_REGISTRY,
+        )
 
-        # Map groups to handler modules via dynamic imports
-        config_groups = self._state.machine_config.supported_gcode_groups
-
-        for group in config_groups:
-            if group in HANDLER_REGISTRY:
-                mod_path, cls_name = HANDLER_REGISTRY[group]
-                builder.add_if_importable(mod_path, cls_name)
-            else:
-                logging.getLogger(__name__).warning(f"Handler for group '{group}' not found in HANDLER_REGISTRY.")
-
-        self._chain = builder.build()
 
 class UniversalConfigDrivenControl(BaseStatefulControl):
     """Generic CNC Control driven entirely by `machines.json` via `UniversalConfigDrivenCanal`."""
@@ -537,3 +225,12 @@ class UniversalConfigDrivenControl(BaseStatefulControl):
             syn = CanalSynchro(tool_paths, nodes)
             syn.synchro_points()
         return None
+
+
+__all__ = [
+    "BaseStatefulCanal",
+    "BaseStatefulControl",
+    "UniversalConfigDrivenCanal",
+    "UniversalConfigDrivenControl",
+    "HANDLER_REGISTRY",
+]

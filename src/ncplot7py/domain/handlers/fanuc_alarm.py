@@ -40,7 +40,7 @@ class FanucAlarmHandler(Handler):
         messages = self._MESSAGE_RE.findall(match.group(2))
         message = messages[0].strip() if messages else "Macro alarm"
         alarm_code = 3000 + alarm_value
-        state.extra.setdefault("alarms", []).append(
+        state.channel_state.alarms.append(
             {"code": alarm_code, "message": message, "line": node.nc_code_line_nr}
         )
         raise_nc_error(

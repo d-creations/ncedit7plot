@@ -25,9 +25,9 @@ class FanucG76ThreadingCycleHandler(Handler):
             return super().handle(node, state)
 
         words = {str(word).upper(): value for word, value in node.command_parameter.items()}
-        state.extra.pop("fanuc_turn_drilling_cycle", None)
+        state.fanuc_state.turn_drilling_cycle = None
         state.set_modal("drilling_cycle", None)
-        state.extra.pop("fanuc.g92.words", None)
+        state.fanuc_state.g92_words = None
         state.set_modal("turning_cycle", None)
         if not {"X", "U", "Z", "W"}.intersection(words):
             self._store_setup(node, state, words)
@@ -51,7 +51,7 @@ class FanucG76ThreadingCycleHandler(Handler):
             self._error(node, 762, "G76 setup P contains an invalid pass count or tool angle", p_text)
         minimum_depth = self._scaled_positive(words["Q"], node, "Q")
         finishing_allowance = self._distance(words["R"], node, "R", allow_zero=True)
-        state.extra["fanuc.g76.setup"] = {
+        state.fanuc_state.g76_setup = {
             "finishing_passes": finishing_passes,
             "chamfer_leads": chamfer_tenths / 10.0,
             "tool_angle": tool_angle,
@@ -62,7 +62,7 @@ class FanucG76ThreadingCycleHandler(Handler):
     def _execute(
         self, node: NCCommandNode, state: CNCState, words: Dict[str, str]
     ) -> Tuple[List[Point], float]:
-        setup = state.extra.get("fanuc.g76.setup")
+        setup = state.fanuc_state.g76_setup
         if not isinstance(setup, dict):
             self._error(node, 763, "G76 cutting block requires a preceding setup block", "")
         invalid = set(words) - self.CUT_WORDS
@@ -125,8 +125,8 @@ class FanucG76ThreadingCycleHandler(Handler):
                 duration += elapsed
 
         node.set_generated_motion_segments(emitter.segments)
-        state.extra["fanuc.threading.active"] = "G76"
-        state.extra["fanuc.g76.pass_depths"] = depths
+        state.fanuc_state.threading_active = "G76"
+        state.fanuc_state.g76_pass_depths = depths
         return points, duration
 
     def _scaled_positive(self, raw: object, node: NCCommandNode, word: str) -> float:

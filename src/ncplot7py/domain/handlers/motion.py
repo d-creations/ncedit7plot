@@ -48,13 +48,13 @@ class MotionHandler(Handler):
 
     @staticmethod
     def _physical_axis(state: CNCState, axis: str) -> str:
-        axis_map = state.extra.get("axis_map")
+        axis_map = state.channel_state.axis_map
         if isinstance(axis_map, dict) and axis in axis_map:
             return str(axis_map[axis])
         bindings = getattr(state.machine_config, "axis_bindings", {})
         binding = bindings.get(axis) if isinstance(bindings, dict) else None
         if isinstance(binding, dict):
-            return str(state.extra.get("star.targetAxis") or axis)
+            return str(state.star_state.target_axis or axis)
         return axis
 
     def handle(self, node: NCCommandNode, state: CNCState) -> Tuple[Optional[List[Point]], Optional[float]]:
@@ -118,7 +118,7 @@ class MotionHandler(Handler):
         for axis, delta in normalized_incremental_target_spec.items():
             resolved[axis] = resolved.get(axis, state.get_axis(axis)) + delta
 
-        axis_map = state.extra.get("axis_map")
+        axis_map = state.channel_state.axis_map
         if isinstance(axis_map, dict):
             for logical, physical in axis_map.items():
                 if physical in resolved:
@@ -185,7 +185,9 @@ class MotionHandler(Handler):
         # so callers/tests can request higher resolution by setting
         # `state.extra['max_segment']` to a smaller value (e.g. 0.05).
         try:
-            eff_max_segment = float(getattr(state, "extra", {}).get("max_segment", self.max_segment) or self.max_segment)
+            channel_state = getattr(state, "channel_state", None)
+            max_seg = channel_state.max_segment if channel_state is not None and channel_state.max_segment is not None else getattr(state, "extra", {}).get("max_segment", self.max_segment)
+            eff_max_segment = float(max_seg or self.max_segment)
         except Exception:
             eff_max_segment = float(self.max_segment)
         # ensure sane lower bound
@@ -215,7 +217,8 @@ class MotionHandler(Handler):
         return points, duration
 
     def _get_active_plane(self, state: CNCState) -> str:
-        plane = getattr(state, "extra", {}).get("g_group_16_plane", "X_Z")
+        channel_state = getattr(state, "channel_state", None)
+        plane = (channel_state.plane if channel_state is not None and channel_state.plane is not None else getattr(state, "extra", {}).get("g_group_16_plane")) or "X_Z"
         if hasattr(plane, "value"):
             plane = plane.value
         plane_name = str(plane)
@@ -346,7 +349,9 @@ class MotionHandler(Handler):
         motion_length = math.hypot(arc_length, rotary_dist)
         # n segments — allow per-state override like in linear interpolation
         try:
-            eff_max_segment = float(getattr(state, "extra", {}).get("max_segment", self.max_segment) or self.max_segment)
+            channel_state = getattr(state, "channel_state", None)
+            max_seg = channel_state.max_segment if channel_state is not None and channel_state.max_segment is not None else getattr(state, "extra", {}).get("max_segment", self.max_segment)
+            eff_max_segment = float(max_seg or self.max_segment)
         except Exception:
             eff_max_segment = float(self.max_segment)
         if eff_max_segment <= 0.0:
@@ -357,7 +362,8 @@ class MotionHandler(Handler):
         # segment via state.extra['angle_per_segment_deg'] (smaller -> more
         # segments). Default to 10 degrees per segment.
         try:
-            desired_deg = float(getattr(state, "extra", {}).get("angle_per_segment_deg", 10.0) or 10.0)
+            deg_override = channel_state.angle_per_segment_deg if channel_state is not None and channel_state.angle_per_segment_deg is not None else getattr(state, "extra", {}).get("angle_per_segment_deg", 10.0)
+            desired_deg = float(deg_override or 10.0)
         except Exception:
             desired_deg = 2.0
         if desired_deg <= 0.0:
@@ -425,13 +431,19 @@ class MotionHandler(Handler):
         return transformed
 
     def _get_c_axis_center(self, state: CNCState) -> Tuple[float, float]:
-        center = getattr(state, "extra", {}).get("c_axis_center", getattr(state, "extra", {}).get("rotary_center", (0.0, 0.0)))
+        channel_state = getattr(state, "channel_state", None)
+        center = (channel_state.c_axis_center or channel_state.rotary_center) if channel_state is not None else None
+        if center is None:
+            center = getattr(state, "extra", {}).get("c_axis_center", getattr(state, "extra", {}).get("rotary_center", (0.0, 0.0)))
         if isinstance(center, (list, tuple)) and len(center) >= 2:
             return float(center[0]), float(center[1])
         return 0.0, 0.0
 
     def _get_rotary_center(self, state: CNCState) -> Tuple[float, float, float]:
-        center = getattr(state, "extra", {}).get("rotary_center", None)
+        channel_state = getattr(state, "channel_state", None)
+        center = channel_state.rotary_center if channel_state is not None else None
+        if center is None:
+            center = getattr(state, "extra", {}).get("rotary_center", None)
         if isinstance(center, (list, tuple)) and len(center) >= 3:
             return float(center[0]), float(center[1]), float(center[2])
         center_x, center_y = self._get_c_axis_center(state)
@@ -446,7 +458,8 @@ class MotionHandler(Handler):
     def _get_seventh_axis_name(self, state: CNCState) -> Optional[str]:
         name = getattr(getattr(state, "machine_config", None), "seventh_axis_name", None)
         if name is None:
-            name = getattr(state, "extra", {}).get("seventh_axis_name")
+            channel_state = getattr(state, "channel_state", None)
+            name = channel_state.seventh_axis_name if channel_state is not None else getattr(state, "extra", {}).get("seventh_axis_name")
         if name is None:
             return None
         text = str(name).strip().upper()
@@ -455,7 +468,8 @@ class MotionHandler(Handler):
     def _get_seventh_axis_maps_to(self, state: CNCState) -> Optional[str]:
         mapped = getattr(getattr(state, "machine_config", None), "seventh_axis_maps_to", None)
         if mapped is None:
-            mapped = getattr(state, "extra", {}).get("seventh_axis_maps_to")
+            channel_state = getattr(state, "channel_state", None)
+            mapped = channel_state.seventh_axis_maps_to if channel_state is not None else getattr(state, "extra", {}).get("seventh_axis_maps_to")
         if mapped is None:
             return None
         text = str(mapped).strip().upper()
@@ -514,26 +528,28 @@ class MotionHandler(Handler):
         end: Optional[Dict[str, float]] = None,
     ) -> float:
         feed = state.feed_rate or 1.0
+        channel_state = getattr(state, "channel_state", None)
+        spindle_limits = getattr(state, "spindle_limits", None)
         extra = getattr(state, "extra", {})
-        feed_mode = extra.get("feed_mode") if isinstance(extra, dict) else None
+        feed_mode = channel_state.feed_mode if channel_state is not None and channel_state.feed_mode is not None else (extra.get("feed_mode") if isinstance(extra, dict) else None)
         feed_mode_value = getattr(feed_mode, "value", feed_mode)
 
         effective_feed_mm_per_min = float(feed)
         if feed_mode_value == "FEED_PER_REV":
             rpm = float(state.spindle_speed or 1.0)
-            speed_mode = extra.get("surface_speed_mode") if isinstance(extra, dict) else None
+            speed_mode = spindle_limits.surface_speed_mode if spindle_limits is not None and spindle_limits.surface_speed_mode is not None else (extra.get("surface_speed_mode") if isinstance(extra, dict) else None)
             if getattr(speed_mode, "value", speed_mode) == "CONSTANT_CUTSPEED":
                 diameter = self._get_average_cutting_diameter(state, start, end)
                 if diameter > 0.0:
                     rpm = (1000.0 * rpm) / (math.pi * diameter)
-            spindle_limit = extra.get("spindle_speed_limit") if isinstance(extra, dict) else None
-            limit_active = extra.get("spindle_speed_limit_active", False) if isinstance(extra, dict) else False
+            spindle_limit = spindle_limits.spindle_speed_limit if spindle_limits is not None and spindle_limits.spindle_speed_limit is not None else (extra.get("spindle_speed_limit") if isinstance(extra, dict) else None)
+            limit_active = bool(spindle_limits.spindle_speed_limit_active) if spindle_limits is not None and spindle_limits.spindle_speed_limit_active is not None else (extra.get("spindle_speed_limit_active", False) if isinstance(extra, dict) else False)
             if spindle_limit is not None and limit_active:
                 rpm = min(rpm, float(spindle_limit))
-            spindle_maximum = extra.get("spindle_speed_maximum") if isinstance(extra, dict) else None
+            spindle_maximum = spindle_limits.spindle_speed_maximum if spindle_limits is not None and spindle_limits.spindle_speed_maximum is not None else (extra.get("spindle_speed_maximum") if isinstance(extra, dict) else None)
             if spindle_maximum is not None:
                 rpm = min(rpm, float(spindle_maximum))
-            spindle_minimum = extra.get("spindle_speed_minimum") if isinstance(extra, dict) else None
+            spindle_minimum = spindle_limits.spindle_speed_minimum if spindle_limits is not None and spindle_limits.spindle_speed_minimum is not None else (extra.get("spindle_speed_minimum") if isinstance(extra, dict) else None)
             if spindle_minimum is not None:
                 rpm = max(rpm, float(spindle_minimum))
             effective_feed_mm_per_min = float(feed) * rpm
@@ -547,8 +563,9 @@ class MotionHandler(Handler):
         start: Optional[Dict[str, float]] = None,
         end: Optional[Dict[str, float]] = None,
     ) -> float:
+        channel_state = getattr(state, "channel_state", None)
         extra = getattr(state, "extra", {})
-        feed_mode = extra.get("feed_mode") if isinstance(extra, dict) else None
+        feed_mode = channel_state.feed_mode if channel_state is not None and channel_state.feed_mode is not None else (extra.get("feed_mode") if isinstance(extra, dict) else None)
         if getattr(feed_mode, "value", feed_mode) == "INVERSE_TIME":
             feed = float(state.feed_rate or 0.0)
             return 60.0 / feed if feed > 0.0 else 0.0
@@ -561,8 +578,9 @@ class MotionHandler(Handler):
         start: Optional[Dict[str, float]],
         end: Optional[Dict[str, float]],
     ) -> float:
+        spindle_limits = getattr(state, "spindle_limits", None)
         extra = getattr(state, "extra", {})
-        runtime_axis = extra.get("g96_reference_axis") if isinstance(extra, dict) else None
+        runtime_axis = spindle_limits.g96_reference_axis if spindle_limits is not None and spindle_limits.g96_reference_axis is not None else (extra.get("g96_reference_axis") if isinstance(extra, dict) else None)
         configured_axis = getattr(getattr(state, "machine_config", None), "g96_reference_axis", None)
         reference_axis = str(runtime_axis or configured_axis or "").strip().upper()
         if not reference_axis:

@@ -19,7 +19,7 @@ class FanucG92ThreadingCycleHandler(Handler):
     def handle(self, node: NCCommandNode, state: CNCState) -> Tuple[Optional[List[Point]], Optional[float]]:
         codes = {str(code).strip().upper() for code in node.g_code}
         if self._cancels_cycle(codes):
-            state.extra.pop("fanuc.g92.words", None)
+            state.fanuc_state.g92_words = None
             state.set_modal("turning_cycle", None)
 
         if "G92" in codes:
@@ -29,12 +29,12 @@ class FanucG92ThreadingCycleHandler(Handler):
             self._require(words, node, {"X", "U"}, "G92 requires X or U")
             self._require(words, node, {"Z", "W"}, "G92 requires Z or W")
             self._require(words, node, {"F"}, "G92 requires thread lead F")
-            state.extra["fanuc.g92.words"] = words
+            state.fanuc_state.g92_words = words
             state.set_modal("turning_cycle", "G92")
         elif state.get_modal("turning_cycle") == "G92" and self._is_repeat(node):
-            words = dict(state.extra.get("fanuc.g92.words", {}))
+            words = dict(state.fanuc_state.g92_words or {})
             words.update(node.command_parameter)
-            state.extra["fanuc.g92.words"] = words
+            state.fanuc_state.g92_words = words
         else:
             return super().handle(node, state)
 
@@ -69,8 +69,8 @@ class FanucG92ThreadingCycleHandler(Handler):
             duration += elapsed
 
         node.set_generated_motion_segments(emitter.segments)
-        state.extra["fanuc.threading.active"] = "G92"
-        state.extra["fanuc.threading.start_angle"] = float(words.get("Q", 0.0)) * 0.001
+        state.fanuc_state.threading_active = "G92"
+        state.fanuc_state.threading_start_angle = float(words.get("Q", 0.0)) * 0.001
         return points, duration
 
     def _validate_thread_state(self, node: NCCommandNode, state: CNCState, words: Dict[str, str]) -> None:
@@ -102,7 +102,7 @@ class FanucG92ThreadingCycleHandler(Handler):
 
     @staticmethod
     def _cancel_drilling_cycle(state: CNCState) -> None:
-        state.extra.pop("fanuc_turn_drilling_cycle", None)
+        state.fanuc_state.turn_drilling_cycle = None
         state.set_modal("drilling_cycle", None)
 
     @staticmethod

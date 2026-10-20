@@ -58,15 +58,15 @@ class GCodeGroup16PlaneExecChainLink(Handler):
         # conflicting plane codes in same block
         if (has17 and has18) or (has17 and has19) or (has18 and has19):
             raise_nc_error(ExceptionTyps.NCCodeErrors, 120, message="Conflicting plane selection codes (G17/G18/G19)", value=str(node.g_code))
-        if (has17 or has18 or has19) and state.extra.get("fanuc.coordinate_rotation"):
+        if (has17 or has18 or has19) and state.fanuc_state.coordinate_rotation:
             raise_nc_error(ExceptionTyps.NCCodeErrors, 121, message="Plane selection is not allowed during G68.1 mode", value=str(node.g_code))
 
         if has17:
-            state.extra["g_group_16_plane"] = PlaneMode.X_Y.value
+            state.channel_state.plane = PlaneMode.X_Y.value
         if has18:
-            state.extra["g_group_16_plane"] = PlaneMode.X_Z.value
+            state.channel_state.plane = PlaneMode.X_Z.value
         if has19:
-            state.extra["g_group_16_plane"] = PlaneMode.Y_Z.value
+            state.channel_state.plane = PlaneMode.Y_Z.value
 
         if self.next_handler is not None:
             return self.next_handler.handle(node, state)

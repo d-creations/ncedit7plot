@@ -50,7 +50,7 @@ class SiemensAlarmHandler(Handler):
             )
 
         message = (match.group(2) or match.group(3) or "").strip()
-        state.extra.setdefault("alarms", []).append(
+        state.channel_state.alarms.append(
             {"code": code, "message": message, "line": node.nc_code_line_nr}
         )
         raise_nc_error(

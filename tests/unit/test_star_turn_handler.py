@@ -207,6 +207,31 @@ class TestStarTurnHandler(unittest.TestCase):
         self.assertEqual(state.extra["star.targetAxis"], "C2")
         self.assertEqual(state.get_axis("C2"), 90.0)
 
+    def test_star_canal_handles_g266_before_tool_handler(self):
+        from ncplot7py.infrastructure.machines.base_stateful_control import UniversalConfigDrivenCanal
+
+        state = CNCState(machine_config=get_machine_config("FANUC_STAR_x-D_y-D_z_R.M.S"))
+        canal = UniversalConfigDrivenCanal("C1", init_state=state)
+        node = NCCommandNode(
+            g_code_command={"G266"},
+            command_parameter={
+                "A": "1.5",
+                "W": "2.0",
+                "S": "300",
+                "F": "120.0",
+                "B": "2.0",
+                "X": "15.0",
+                "Z": "15.0",
+                "T": "100",
+            },
+        )
+
+        canal.run_nc_code_list([node])
+
+        self.assertEqual(state.parameters["523"], 100.0)
+        self.assertIsNone(state.tool_state.active_tool_number)
+        self.assertEqual(canal.get_tool_path(), [])
+
 
 if __name__ == '__main__':
     unittest.main()

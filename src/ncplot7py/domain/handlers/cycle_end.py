@@ -45,12 +45,12 @@ class CycleEnd(Handler):
             )
 
         if is_cycle_start:
-            count = state.extra.get("cycle_start_count", 0)
+            count = state.channel_state.cycle_start_count or 0
             if count >= 1:
                 # Sever the linked list to stop execution
                 node._next_ncCode = None
             else:
-                state.extra["cycle_start_count"] = count + 1
+                state.channel_state.cycle_start_count = count + 1
 
     def handle(self, node: NCCommandNode, state: CNCState) -> Tuple[Optional[List], Optional[float]]:
         try:

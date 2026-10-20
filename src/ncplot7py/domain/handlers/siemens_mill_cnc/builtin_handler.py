@@ -25,20 +25,20 @@ class SiemensBuiltinHandler(Handler):
             command_name, value = command.split("=", 1)
             position = self._evaluator.evaluate(value, state)
             scope["spindle_position"] = position
-            state.extra["siemens.c_axis_mode"] = "positionControlled"
-            state.extra["siemens.c_axis_position"] = position
-            state.extra["siemens.c_axis_command"] = command_name.strip().upper()
+            state.siemens_state.c_axis_mode = "positionControlled"
+            state.siemens_state.c_axis_position = position
+            state.siemens_state.c_axis_command = command_name.strip().upper()
             axis_match = re.match(r"^SPOSA?\[(\d+)\]", command, re.IGNORECASE)
             axis = f"C{axis_match.group(1)}" if axis_match else "C"
             if axis not in state.axes:
                 axis = "C"
             state.set_axis(axis, position)
         elif upper == "RET" or upper == "M17":
-            state.extra["program_returned"] = True
+            state.channel_state.program_returned = True
         elif upper == "STOPRE":
             scope["preprocess_stops"].append(node.nc_code_line_nr)
         elif upper.startswith("MSG"):
-            state.extra.setdefault("messages", []).append({"message": command, "line": node.nc_code_line_nr})
+            state.channel_state.messages.append({"message": command, "line": node.nc_code_line_nr})
         elif upper.startswith("WORKPIECE"):
             scope["workpiece"] = True
         elif upper.startswith("NEWCONF"):

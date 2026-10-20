@@ -40,8 +40,8 @@ class SiemensISOFeedHandler(Handler):
                 selected_mode = FeedMode.FEED_PER_REV
 
         if selected_mode is not None:
-            state.extra["feed_mode"] = selected_mode
-            state.extra["surface_speed_mode"] = "CONSTANT_REV"
+            state.channel_state.feed_mode = selected_mode
+            state.spindle_limits.surface_speed_mode = "CONSTANT_REV"
 
         if self.next_handler is not None:
             return self.next_handler.handle(node, state)

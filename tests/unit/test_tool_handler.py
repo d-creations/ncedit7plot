@@ -155,6 +155,53 @@ class TestToolHandler(unittest.TestCase):
         self.assertEqual(state.extra["active_tool_number"], 1)
         self.assertEqual(state.extra["active_offset_number"], 2)
 
+    def test_tool_change_moves_to_configured_tool_change_position_with_tool_override(self):
+        config = replace(
+            get_machine_config("FANUC_STAR_x-D_y-D_z_R.M.S"),
+            tool_change_position={
+                "default": {"X": 20.0, "Y": 0.0, "B": 0.0},
+                "by_tool": {
+                    "1100": {"X": 40.0, "Y": 5.0, "B": 0.0},
+                },
+            },
+        )
+        state = CNCState(machine_config=config)
+        handler = StarFanucToolHandler(next_handler=MotionHandler())
+
+        # T2500 uses the default tool_change_position (X=20 in diameter -> 10 radius, Y=0, B=0)
+        handler.handle(NCCommandNode(command_parameter={"T": "2500"}), state)
+        self.assertEqual(state.get_axis("X"), 10.0)
+        self.assertEqual(state.get_axis("Y"), 0.0)
+        self.assertEqual(state.get_axis("B"), 0.0)
+
+        # T1100 uses the tool-specific override if not overridden by handler class
+        custom_handler = FanucToolHandler(next_handler=MotionHandler())
+        custom_handler.handle(NCCommandNode(command_parameter={"T": "1100"}), state)
+        self.assertEqual(state.get_axis("X"), 20.0)
+        self.assertEqual(state.get_axis("Y"), 2.5)
+
+    def test_g28_moves_to_configured_home_position(self):
+        from ncplot7py.domain.handlers.fanuc_turn_cnc.gcode_group0_coordinate_set import GCodeGroup0CoordinateSetExecChainLink
+
+        config = replace(
+            get_machine_config("FANUC_TURN"),
+            home_position={"X": 50.0, "Y": 15.0, "Z": 100.0},
+        )
+        state = CNCState(machine_config=config)
+        state.set_axis("X", 5.0)
+        state.set_axis("Y", 3.0)
+        state.set_axis("Z", -20.0)
+        chain = GCodeGroup0CoordinateSetExecChainLink(next_handler=MotionHandler())
+
+        # G28 U0 V0 W0 -> moves X, Y, Z to configured home_position (X is diameter mode -> 50/2 = 25)
+        node = NCCommandNode(g_code_command={"G28"}, command_parameter={"U": "0", "V": "0", "W": "0"})
+        points, _ = chain.handle(node, state)
+
+        self.assertIsNotNone(points)
+        self.assertEqual(state.get_axis("X"), 25.0)
+        self.assertEqual(state.get_axis("Y"), 15.0)
+        self.assertEqual(state.get_axis("Z"), 100.0)
+
     def test_invalid_policy_is_rejected(self):
         with self.assertRaises(ValueError):
             replace(get_machine_config("FANUC_MILL"), tool_selection={"mode": "guess"})

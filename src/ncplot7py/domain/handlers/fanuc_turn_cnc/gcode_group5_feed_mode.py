@@ -52,15 +52,15 @@ class GCodeGroup5FeedModeExecChainLink(Handler):
 
         if has98:
             try:
-                state.extra["feed_mode"] = FeedMode.FEED_PER_MIN
+                state.channel_state.feed_mode = FeedMode.FEED_PER_MIN
             except Exception:
-                state.extra["feed_mode"] = FeedMode.FEED_PER_MIN.value
+                state.channel_state.feed_mode = FeedMode.FEED_PER_MIN.value
 
         if has99:
             try:
-                state.extra["feed_mode"] = FeedMode.FEED_PER_REV
+                state.channel_state.feed_mode = FeedMode.FEED_PER_REV
             except Exception:
-                state.extra["feed_mode"] = FeedMode.FEED_PER_REV.value
+                state.channel_state.feed_mode = FeedMode.FEED_PER_REV.value
 
         if self.next_handler is not None:
             return self.next_handler.handle(node, state)

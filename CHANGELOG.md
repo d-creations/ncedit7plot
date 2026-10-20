@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.0] - 2026-10-20
+
+### Added
+- Added typed channel sub-state dataclasses (`ChannelRuntimeState`, `ToolSelectionState`, `SpindleSpeedState`, `FanucChannelState`, `SiemensChannelState`, and `StarChannelState`) to `CNCState` alongside a synchronized `ExtraStateMapping` adapter for backward compatibility.
+- Added `CanalProgramInterpreter` in `domain/canal_interpreter.py` to encapsulate step-by-step NC node execution, motion context capture, and toolpath compensation projection.
+- Added `home_position` and `tool_change_position` configuration dictionaries across all machine profiles in `machines.json` and `MachineConfig`.
+- Added configurable tool-change positioning in `BaseToolHandler` (with `default`, `by_channel`, `by_tool`, and handler-level `TOOL_CHANGE_POSITIONS` overrides such as `T1100` in `StarFanucToolHandler`).
+- Added reference/home position resolution to `G28` (`U0`/`V0`/`W0`/`H0` and absolute axes) in `GCodeGroup0CoordinateSetExecChainLink` and `SiemensISOMiscHandler`.
+
+### Changed
+- Extracted `HANDLER_REGISTRY` and `HandlerChainBuilder.from_groups(...)` into `infrastructure/handler_chain_builder.py` and slimmed down `BaseStatefulCanal`.
+- Removed remaining hardcoded vendor/model checks in `tool_compensation.py`, `tool_pose.py`, `machines.py`, `simulation_contract.py`, and `nc_execution.py` in favor of config-driven attributes.
+- Broke the `shared -> domain` dependency in `shared/logging_facade.py` so package dependencies flow strictly in one direction (`cli -> application -> infrastructure -> domain -> interfaces/shared`).
+- Updated `docs/Classes.puml` to reflect all new classes, helper relationships, and unidirectional package dependencies.
+
+### Fixed
+- Moved `"star_g266"` before `"star_fanuc_tool_handler"` in all STAR machine profiles in `machines.json` so `G266` blocks containing a `T` parameter map `T` to `#523` before tool selection runs.
+
+---
+
 ## [0.3.0] - 2026-10-05
 
 ### Added

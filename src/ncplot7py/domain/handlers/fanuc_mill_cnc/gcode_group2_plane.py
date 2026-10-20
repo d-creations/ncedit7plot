@@ -29,11 +29,11 @@ class FanucMillGroup2PlaneHandler(Handler):
                 if g_upper.startswith("G"):
                     num = float(g_upper[1:])
                     if num == 17:
-                        state.extra["g_group_16_plane"] = FanucMillPlaneMode.X_Y.value
+                        state.channel_state.plane = FanucMillPlaneMode.X_Y.value
                     elif num == 18:
-                        state.extra["g_group_16_plane"] = FanucMillPlaneMode.X_Z.value
+                        state.channel_state.plane = FanucMillPlaneMode.X_Z.value
                     elif num == 19:
-                        state.extra["g_group_16_plane"] = FanucMillPlaneMode.Y_Z.value
+                        state.channel_state.plane = FanucMillPlaneMode.Y_Z.value
             except Exception:
                 pass
 

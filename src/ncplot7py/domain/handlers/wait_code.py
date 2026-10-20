@@ -53,7 +53,7 @@ class WaitCodeHandler(Handler):
                 elif m_val in (171, 172):
                     is_star_wait = True
                     # Check channel: if Channel 3 (or P specifies 23/32), pair 23; else pair 12
-                    ch_num = state.extra.get("path_number", 1)
+                    ch_num = state.channel_state.path_number or 1
                     if "P" in params:
                         try:
                             p_val = int(params["P"])
@@ -106,7 +106,7 @@ class WaitCodeHandler(Handler):
             node.extra["wait_code"] = wait_info
 
             # Also record current canal wait status in state
-            state.extra["last_wait_code"] = wait_info
+            state.channel_state.last_wait_code = wait_info
 
         if self.next_handler is not None:
             return self.next_handler.handle(node, state)

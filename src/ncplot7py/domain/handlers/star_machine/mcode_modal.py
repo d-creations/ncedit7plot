@@ -9,7 +9,7 @@ class StarModalMCodeHandler(BaseModalMCodeHandler):
     c_axis_reset_codes = {"M3", "M4", "M6", "M9"}
 
     def _return_c_axis_to_zero(self, node: NCCommandNode, state: CNCState):
-        axis = state.extra.get("star.targetAxis")
+        axis = state.star_state.target_axis
         if axis not in {"C1", "C2"}:
             return super()._return_c_axis_to_zero(node, state)
 
@@ -56,11 +56,11 @@ class StarModalMCodeHandler(BaseModalMCodeHandler):
             }
 
         if m_code == "M8":
-            state.extra["star.c_axis_mode"] = "positionControlled"
+            state.star_state.c_axis_mode = "positionControlled"
         elif m_code == "M9":
-            state.extra["star.c_axis_mode"] = "spindleInvariant"
+            state.star_state.c_axis_mode = "spindleInvariant"
         elif m_code in {"M40", "M41"}:
-            state.extra["star.machining_mode"] = m_code
+            state.star_state.machining_mode = m_code
 
         from ncplot7py.domain.handlers.axis_binding import AxisBindingHandler
         AxisBindingHandler.apply_bindings(state, node=NCCommandNode(command_parameter={"M": m_code}))

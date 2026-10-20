@@ -130,7 +130,7 @@ def validate_pose_request(payload: Any, profiles: Mapping[str, MachineConfig]) -
                 raise SimulationContractError(
                     "POSE_CONTRACT_UNSUPPORTED", "Machine profile has no verified pose producer", channel,
                 )
-            if config.simulation["modelId"] not in {"MILL_DEMO", "STAR_SR20R_IV_B", "STAR_SV20R", "STAR_SG42"}:
+            if not isinstance(config.simulation, dict) or config.simulation.get("poseContract") != POSE_CONTRACT:
                 raise SimulationContractError(
                     "POSE_CONTRACT_UNSUPPORTED", "Machine pose output is not implemented for this profile", channel,
                 )

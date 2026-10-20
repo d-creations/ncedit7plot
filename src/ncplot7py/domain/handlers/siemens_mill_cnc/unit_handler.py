@@ -19,9 +19,9 @@ class SiemensISOInchMetricHandler(Handler):
                 if g.upper().startswith("G"):
                     gnum = int(g[1:])
                     if gnum == 20:
-                        state.extra["units"] = "INCH"
+                        state.channel_state.units = "INCH"
                     elif gnum == 21:
-                        state.extra["units"] = "METRIC"
+                        state.channel_state.units = "METRIC"
             except Exception:
                 continue
 

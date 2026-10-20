@@ -28,10 +28,10 @@ class StarSpindleFluctuationHandler(Handler):
 
         if has_g25:
             state.set_modal("star_spindle_fluctuation", "G25")
-            state.extra["star.spindle.fluctuation_monitoring"] = False
+            state.star_state.spindle_fluctuation_monitoring = False
         elif has_g26:
             state.set_modal("star_spindle_fluctuation", "G26")
-            state.extra["star.spindle.fluctuation_monitoring"] = True
+            state.star_state.spindle_fluctuation_monitoring = True
 
         return super().handle(node, state)
 

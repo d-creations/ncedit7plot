@@ -55,8 +55,8 @@ class SiemensISOCoordinateHandler(Handler):
             scope["bypass_work_offset_once"] = True
 
         if work_offset_index is not None:
-            state.extra["active_work_offset_index"] = work_offset_index
-            state.extra["work_offset_index"] = work_offset_index
+            state.channel_state.active_work_offset_index = work_offset_index
+            state.channel_state.work_offset_index = work_offset_index
             frame = scope.get("frames", {}).get(work_offset_index)
             if frame:
                 for axis, value in frame.get("translation", {}).items():

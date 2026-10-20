@@ -38,14 +38,14 @@ class FanucTurnDrillingCycleHandler(Handler):
         if explicit_code is not None:
             self._validate_words(node)
             cycle = self._create_cycle(explicit_code, node, state)
-            state.extra["fanuc_turn_drilling_cycle"] = cycle
+            state.fanuc_state.turn_drilling_cycle = cycle
             state.set_modal("drilling_cycle", explicit_code)
         else:
-            cycle = state.extra.get("fanuc_turn_drilling_cycle")
+            cycle = state.fanuc_state.turn_drilling_cycle
             if not isinstance(cycle, dict) or not self._is_repeat_block(node, cycle):
                 return super().handle(node, state)
             cycle = self._merge_repeat_words(cycle, node)
-            state.extra["fanuc_turn_drilling_cycle"] = cycle
+            state.fanuc_state.turn_drilling_cycle = cycle
 
         return self._execute_cycle(cycle, state, node)
 
@@ -109,7 +109,7 @@ class FanucTurnDrillingCycleHandler(Handler):
                 cycle_points, cycle_duration = self._peck(drill_axis, r_level, bottom, words, state)
             elif code == "G84":
                 cycle_points, cycle_duration = self._tap(drill_axis, r_level, bottom, state)
-                state.extra["fanuc_turn.last_tapping_reversal"] = True
+                state.fanuc_state.last_tapping_reversal = True
             else:
                 cycle_points, cycle_duration = self._bore(drill_axis, r_level, bottom, state)
             points.extend(cycle_points)
@@ -261,7 +261,7 @@ class FanucTurnDrillingCycleHandler(Handler):
 
     @staticmethod
     def _feed_mode(state: CNCState) -> str:
-        mode = state.extra.get("feed_mode", "FEED_PER_REV")
+        mode = state.channel_state.feed_mode or "FEED_PER_REV"
         return str(getattr(mode, "value", mode))
 
     @staticmethod
@@ -281,7 +281,7 @@ class FanucTurnDrillingCycleHandler(Handler):
 
     @staticmethod
     def _cancel(state: CNCState) -> None:
-        state.extra.pop("fanuc_turn_drilling_cycle", None)
+        state.fanuc_state.turn_drilling_cycle = None
         state.set_modal("drilling_cycle", None)
 
     @staticmethod

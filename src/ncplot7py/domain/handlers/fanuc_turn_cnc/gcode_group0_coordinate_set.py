@@ -49,27 +49,34 @@ class GCodeGroup0CoordinateSetExecChainLink(Handler):
                             val = 0.0
                         state.axes[axis] = val / mult
 
-            # --- G28: move to reference/zero, convert U/V/W/H to X/Y/Z/C and
+            # --- G28: move to reference/home position, convert U/V/W/H to X/Y/Z/C and
             # adjust for offsets (we mutate parameters so downstream motion
             # handlers see absolute coordinates after offset correction)
             elif g_num == 28:
                 # ensure a rapid (G00) motion code is present
                 node.g_code.add("G00")
+                home_positions = getattr(getattr(state, "machine_config", None), "home_position", {}) or {}
+                axis_map = state.channel_state.axis_map or {}
                 for key in list(node.command_parameter.keys()):
-                    mapped = self.AXIS_MAP.get(key.upper(), key.upper())
+                    upper_key = key.upper()
+                    mapped = self.AXIS_MAP.get(upper_key, upper_key)
+                    if mapped not in ("X", "Y", "Z", "A", "B", "C") and mapped not in home_positions:
+                        continue
                     try:
                         raw = float(node.command_parameter.get(key))
                     except Exception:
                         # leave as-is when not numeric
                         continue
+                    physical = axis_map.get(mapped, mapped)
+                    home_val = float(home_positions.get(physical, home_positions.get(mapped, 0.0)))
                     off = state.offsets.get(mapped, 0.0)
                     mult = state.axis_multipliers.get(mapped, 1.0) or 1.0
-                    # subtract offset*multiplier (user example used that formula)
-                    corrected = raw - off * mult
+                    target_base = home_val + raw if upper_key in self.AXIS_MAP else (home_val if raw == 0.0 else raw)
+                    corrected = target_base - off * mult
                     # update parameter using mapped axis letter
                     node.command_parameter[mapped] = str(corrected)
                     # remove original key if different (U/V/W/H)
-                    if mapped != key.upper():
+                    if mapped != upper_key:
                         node.command_parameter.pop(key, None)
 
             # --- G4: dwell — consume time parameters but no axis motion

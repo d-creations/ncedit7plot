@@ -56,37 +56,36 @@ class GCodeGroup21PolarCoExecChainLink(Handler):
         if has112 and has113:
             raise_nc_error(ExceptionTyps.NCCodeErrors, 110, message="Conflicting polar coordinate codes G112 and G113", value=str(node.g_code))
 
-        # set flags in state.extra
+        # set flags in state.channel_state
         if has112:
             # remember previous plane (if any) so disabling polar can
             # restore it rather than forcing an arbitrary plane.
-            prev = state.extra.get("g_group_16_plane")
+            prev = state.channel_state.plane
             if prev is not None:
-                state.extra["g_group_21_prev_plane"] = prev
-            state.extra["g_group_21_star"] = "POLAR_COORDINATE_ON"
-            state.extra["g_group_16_plane"] = "X_Y"
+                state.channel_state.prev_plane = prev
+            state.channel_state.polar_star_mode = "POLAR_COORDINATE_ON"
+            state.channel_state.plane = "X_Y"
         if has113:
-            state.extra["g_group_21_star"] = "POLAR_COORDINATE_OFF"
+            state.channel_state.polar_star_mode = "POLAR_COORDINATE_OFF"
             # restore previous plane if we recorded one, otherwise default
             # to X_Y (XY plane) which is the most common working plane.
-            prev = state.extra.pop("g_group_21_prev_plane", None)
+            prev = state.channel_state.prev_plane
+            state.channel_state.prev_plane = None
             if prev is not None:
-                state.extra["g_group_16_plane"] = prev
+                state.channel_state.plane = prev
             else:
-                state.extra["g_group_16_plane"] = "X_Y"
+                state.channel_state.plane = "X_Y"
 
         # If polar mode active, remap C/H -> axis and possibly swap arcs
-        if state.extra.get("g_group_21_star") == "POLAR_COORDINATE_ON":
+        if state.channel_state.polar_star_mode == "POLAR_COORDINATE_ON":
             # which axis is used for polar interpolation? default to 'Y'
             polar_axis = str(
-                state.extra.get(
-                    "polar_interpolate_axis",
-                    getattr(getattr(state, "machine_config", None), "polar_interpolate_axis", "Y"),
-                )
+                state.channel_state.polar_interpolate_axis
+                or getattr(getattr(state, "machine_config", None), "polar_interpolate_axis", "Y")
             ).upper()
             # multipliers (defaults to 1.0)
-            xmul = float(state.extra.get("x_axis_multiplication", state.axis_multipliers.get("X", 1.0) or 1.0))
-            ymul = float(state.extra.get("y_axis_multiplication", state.axis_multipliers.get("Y", 1.0) or 1.0))
+            xmul = float(state.channel_state.x_axis_multiplication if state.channel_state.x_axis_multiplication is not None else (state.axis_multipliers.get("X", 1.0) or 1.0))
+            ymul = float(state.channel_state.y_axis_multiplication if state.channel_state.y_axis_multiplication is not None else (state.axis_multipliers.get("Y", 1.0) or 1.0))
 
             # C parameter -> axis displacement
             if node.command_parameter and "C" in node.command_parameter:

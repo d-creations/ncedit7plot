@@ -28,17 +28,17 @@ class StarAutomaticCoordinateHandler(Handler):
             self._handle_g125(node, state)
         elif code == "G130":
             self._require_words(node, code, set(), 3620)
-            state.extra["star.coordinate.z2_set"] = False
-            state.extra["star.coordinate.path2_machining"] = False
+            state.star_state.coordinate_z2_set = False
+            state.star_state.coordinate_path2_machining = False
         elif code == "G131":
             self._handle_g131(node, state)
         elif code == "G132":
             self._require_words(node, code, set(), 3623)
-            state.extra["star.coordinate.z2_set"] = True
-            state.extra["star.coordinate.path2_machining"] = True
+            state.star_state.coordinate_z2_set = True
+            state.star_state.coordinate_path2_machining = True
         elif code == "G133":
             self._require_words(node, code, set(), 3624)
-            state.extra["star.coordinate.projection_stored"] = True
+            state.star_state.coordinate_projection_stored = True
 
         return super().handle(node, state)
 
@@ -46,19 +46,19 @@ class StarAutomaticCoordinateHandler(Handler):
         self._require_words(node, "G125", {"Z", "W"}, 3622)
         values = self._numeric_words(node, {"Z", "W"})
         values.setdefault("Z", 0.0)
-        state.extra["star.coordinate.z1_command"] = values
-        state.extra["star.coordinate.z1_set"] = True
+        state.star_state.coordinate_z1_command = values
+        state.star_state.coordinate_z1_set = True
         for word in values:
             node.command_parameter.pop(word, None)
 
     def _handle_g131(self, node: NCCommandNode, state: CNCState) -> None:
         self._require_words(node, "G131", {"B"}, 3621)
-        if state.extra.get("star.axis.z1_moving"):
+        if state.star_state.axis_z1_moving:
             self._error(node, 3628, "G131 cannot execute while the Z1 axis is moving")
 
         values = self._numeric_words(node, {"B"})
-        state.extra["star.coordinate.pickup_b"] = values.get("B")
-        state.extra["star.coordinate.pickup_set"] = True
+        state.star_state.coordinate_pickup_b = values.get("B")
+        state.star_state.coordinate_pickup_set = True
         node.command_parameter.pop("B", None)
 
     def _require_compensation_off(self, node: NCCommandNode, state: CNCState, code: str) -> None:

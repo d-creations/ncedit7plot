@@ -213,6 +213,8 @@ class MachineConfig:
     tool_selection: Dict[str, Any] = field(default_factory=dict)
     axis_bindings: Dict[str, Any] = field(default_factory=dict)
     axes: Tuple[str, ...] = ()
+    home_position: Dict[str, float] = field(default_factory=dict)
+    tool_change_position: Dict[str, Any] = field(default_factory=dict)
     simulation: Optional[Dict[str, Any]] = None
     spindles: Dict[str, Any] = field(default_factory=dict)
 
@@ -222,6 +224,16 @@ class MachineConfig:
         if not isinstance(self.axes, (list, tuple)) or any(not isinstance(axis, str) or not axis.strip() for axis in self.axes) or len(set(self.axes)) != len(self.axes):
             raise ValueError("axes must contain unique nonempty IDs")
         self.axes = tuple(self.axes)
+        if not isinstance(self.home_position, dict):
+            raise ValueError("home_position must be an object")
+        normalized_home: Dict[str, float] = {}
+        for axis, value in self.home_position.items():
+            if not isinstance(axis, str) or not axis.strip() or type(value) not in (int, float) or not math.isfinite(value):
+                raise ValueError("home_position entries must map axis names to finite numbers")
+            normalized_home[axis.strip().upper()] = float(value)
+        self.home_position = normalized_home
+        if not isinstance(self.tool_change_position, dict):
+            raise ValueError("tool_change_position must be an object")
         if self.simulation is not None:
             self.simulation = validate_simulation_config(self.simulation, self.channels, self.axes)
         if not isinstance(self.axis_bindings, dict):
@@ -284,11 +296,12 @@ class MachineConfig:
             asdict(self),
             sort_keys=True, separators=(",", ":"), allow_nan=False,
         )
+        pose_contract = self.simulation.get("poseContract") if isinstance(self.simulation, dict) else None
         metadata = {
             "axes": list(self.axes),
             "availableChannels": self.channels,
             "profileRevision": "sha256:" + hashlib.sha256(canonical.encode("utf-8")).hexdigest(),
-            "supportedPoseContracts": [POSE_CONTRACT] if self.simulation and self.simulation["modelId"] in {"MILL_DEMO", "STAR_SR20R_IV_B", "STAR_SV20R", "STAR_SG42"} else [],
+            "supportedPoseContracts": [pose_contract] if pose_contract == POSE_CONTRACT else [],
         }
         if self.simulation is not None:
             metadata["simulation"] = deepcopy(self.simulation)
@@ -353,6 +366,8 @@ def load_machine_configs():
                     tool_selection=deepcopy(val.get('tool_selection', {})),
                     axis_bindings=deepcopy(val.get('axis_bindings', {})),
                     axes=val.get('axes', []),
+                    home_position=deepcopy(val.get('home_position', {})),
+                    tool_change_position=deepcopy(val.get('tool_change_position', {})),
                     simulation=val.get('simulation'),
                     spindles=deepcopy(val.get('spindles', {})),
                 )

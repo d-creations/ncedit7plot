@@ -39,19 +39,19 @@ class SiemensISOSpeedHandler(Handler):
 
         speed_code = next(iter(speed_codes), None)
         if speed_code in {"G96", "G961", "G962"}:
-            state.extra["surface_speed_mode"] = SiemensSpeedMode.CONSTANT_CUTSPEED
+            state.spindle_limits.surface_speed_mode = SiemensSpeedMode.CONSTANT_CUTSPEED
         elif speed_code in {"G97", "G971", "G972", "G973"}:
-            state.extra["surface_speed_mode"] = SiemensSpeedMode.CONSTANT_REV
+            state.spindle_limits.surface_speed_mode = SiemensSpeedMode.CONSTANT_REV
 
         if speed_code in {"G96", "G97", "G973"}:
-            state.extra["feed_mode"] = "FEED_PER_REV"
+            state.channel_state.feed_mode = "FEED_PER_REV"
         elif speed_code in {"G961", "G971"}:
-            state.extra["feed_mode"] = "FEED_PER_MIN"
+            state.channel_state.feed_mode = "FEED_PER_MIN"
 
         if speed_code in {"G96", "G961", "G97"}:
-            state.extra["spindle_speed_limit_active"] = True
+            state.spindle_limits.spindle_speed_limit_active = True
         elif speed_code is not None:
-            state.extra["spindle_speed_limit_active"] = False
+            state.spindle_limits.spindle_speed_limit_active = False
 
         command = str(node.variable_command or "")
         limit_code = next(
@@ -60,10 +60,13 @@ class SiemensISOSpeedHandler(Handler):
         )
         if limit_code is not None:
             is_maximum = int(str(limit_code).strip().upper()[1:]) == 26
-            limit_name = "spindle_speed_maximum" if is_maximum else "spindle_speed_minimum"
             if "S" in node.command_parameter:
-                state.extra[limit_name] = float(node.command_parameter.pop("S"))
-            indexed_limits = state.extra.setdefault("spindle_speed_limits", {})
+                s_limit = float(node.command_parameter.pop("S"))
+                if is_maximum:
+                    state.spindle_limits.spindle_speed_maximum = s_limit
+                else:
+                    state.spindle_limits.spindle_speed_minimum = s_limit
+            indexed_limits = state.spindle_limits.spindle_speed_limits
             for key, value in node.command_parameter.items():
                 if re.fullmatch(r"S\d+", str(key), re.IGNORECASE):
                     spindle = int(str(key)[1:])
@@ -74,14 +77,14 @@ class SiemensISOSpeedHandler(Handler):
                 indexed_limits.setdefault(int(spindle), {})["maximum" if is_maximum else "minimum"] = float(value)
 
         if match := re.search(r"\bSCC\s*\[\s*([A-Za-z][A-Za-z0-9_]*)\s*\]", command, re.IGNORECASE):
-            state.extra["g96_reference_axis"] = match.group(1).upper()
+            state.spindle_limits.g96_reference_axis = match.group(1).upper()
         limit_match = re.search(r"\bLIMS(?:\s*\[\s*1\s*\])?\s*=\s*([+-]?\d+(?:\.\d+)?)", command, re.IGNORECASE)
         if limit_match:
-            state.extra["spindle_speed_limit"] = float(limit_match.group(1))
+            state.spindle_limits.spindle_speed_limit = float(limit_match.group(1))
         else:
             for key, value in node.command_parameter.items():
                 if str(key).upper() in {"LIMS", "LIMS[1]"}:
-                    state.extra["spindle_speed_limit"] = float(str(value).lstrip("="))
+                    state.spindle_limits.spindle_speed_limit = float(str(value).lstrip("="))
                     break
 
         if self.next_handler is not None:

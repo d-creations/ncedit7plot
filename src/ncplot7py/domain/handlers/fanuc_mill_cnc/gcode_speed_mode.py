@@ -46,12 +46,12 @@ class FanucMillSpeedModeHandler(Handler):
             raise_nc_error(ExceptionTyps.NCCodeErrors, 100, message="Conflicting surface speed codes G96 and G97", value=str(node.g_code))
 
         if has96:
-            try: state.extra["surface_speed_mode"] = SpeedMode.CONSTANT_CUTSPEED
-            except Exception: state.extra["surface_speed_mode"] = SpeedMode.CONSTANT_CUTSPEED.value
+            try: state.spindle_limits.surface_speed_mode = SpeedMode.CONSTANT_CUTSPEED
+            except Exception: state.spindle_limits.surface_speed_mode = SpeedMode.CONSTANT_CUTSPEED.value
 
         if has97:
-            try: state.extra["surface_speed_mode"] = SpeedMode.CONSTANT_REV
-            except Exception: state.extra["surface_speed_mode"] = SpeedMode.CONSTANT_REV.value
+            try: state.spindle_limits.surface_speed_mode = SpeedMode.CONSTANT_REV
+            except Exception: state.spindle_limits.surface_speed_mode = SpeedMode.CONSTANT_REV.value
 
         if self.next_handler is not None:
             return self.next_handler.handle(node, state)

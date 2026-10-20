@@ -196,3 +196,21 @@ def project_fixed_target_poses(
                       "reference": reference, "frameId": f"workpiece:{workpiece_carrier['id']}"})
         previous = quaternion
     return poses
+
+
+def project_simulation_poses(
+    points: list[dict[str, float]],
+    context: dict[str, Any],
+    mounting: list[float],
+    simulation: dict[str, Any],
+    channel_id: str,
+    tool_number: Any,
+    reference: str,
+) -> list[dict[str, Any]]:
+    """Dispatch pose projection from the configured simulation profile."""
+    fidelity = simulation.get("fidelity") if isinstance(simulation, dict) else None
+    if fidelity == "demo":
+        return project_mill_demo_poses(points, context, mounting)
+    return project_fixed_target_poses(
+        points, context, mounting, simulation, channel_id, tool_number, reference,
+    )

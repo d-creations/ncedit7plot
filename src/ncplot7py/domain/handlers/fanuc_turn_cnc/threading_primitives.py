@@ -68,15 +68,15 @@ class ThreadingPrimitiveEmitter:
         source_code: str,
         lead: Optional[float],
     ) -> Tuple[List[Point], float]:
-        old_mode = state.extra.get("feed_mode")
+        old_mode = state.channel_state.feed_mode
         old_feed = state.feed_rate
         if lead is not None:
-            state.extra["feed_mode"] = "FEED_PER_REV"
+            state.channel_state.feed_mode = "FEED_PER_REV"
             state.feed_rate = lead
         try:
             points, duration = self._motion.handle(node, state)
         finally:
-            state.extra["feed_mode"] = old_mode
+            state.channel_state.feed_mode = old_mode
             state.feed_rate = old_feed
 
         result_points = points or []

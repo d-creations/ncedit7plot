@@ -20,9 +20,9 @@ class FanucG36CircularThreadingHandler(Handler):
         codes = {str(code).strip().upper() for code in node.g_code}
         if "G36" not in codes:
             return super().handle(node, state)
-        state.extra.pop("fanuc_turn_drilling_cycle", None)
+        state.fanuc_state.turn_drilling_cycle = None
         state.set_modal("drilling_cycle", None)
-        state.extra.pop("fanuc.g92.words", None)
+        state.fanuc_state.g92_words = None
         state.set_modal("turning_cycle", None)
         if not getattr(state.machine_config, "circular_threading_enabled", False):
             self._error(node, 360, "G36 circular threading option is not enabled", "G36")
@@ -43,7 +43,7 @@ class FanucG36CircularThreadingHandler(Handler):
             node.command_parameter, state, source_code="G36", lead=lead
         )
         node.set_generated_motion_segments(emitter.segments)
-        state.extra["fanuc.threading.active"] = "G36"
+        state.fanuc_state.threading_active = "G36"
         return points, duration
 
     @staticmethod

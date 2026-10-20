@@ -15,29 +15,60 @@ messages when `web_buffer=True` was used during configuration.
 from __future__ import annotations
 
 import logging
+import importlib.resources as resources
+import xml.etree.ElementTree as ET
 from collections import deque
-from typing import Deque, List, Optional
+from typing import Deque, Dict, List, Optional
 from typing import Any
 
 
-# i18n support (lazy import to avoid import cycles when package is imported)
+class _DefaultLocaleCatalog:
+    """Minimal XML locale catalog so `shared` does not depend on `domain`."""
+
+    def __init__(self, package: str = "ncplot7py.locales") -> None:
+        self.package = package
+        self._cache: Dict[str, Dict[str, str]] = {}
+
+    def _load_lang(self, lang: str) -> Dict[str, str]:
+        if lang in self._cache:
+            return self._cache[lang]
+        data: Dict[str, str] = {}
+        try:
+            file = resources.files(self.package) / f"{lang}.xml"
+            with resources.as_file(file) as p:
+                tree = ET.parse(p)
+        except FileNotFoundError:
+            self._cache[lang] = data
+            return data
+        root = tree.getroot()
+        for msg in root.findall("message"):
+            mid = msg.get("id")
+            if mid:
+                data[mid] = (msg.text or "").strip()
+        self._cache[lang] = data
+        return data
+
+    def get_template(self, lang: str, key: Any) -> Optional[str]:
+        key_id = key.to_id() if hasattr(key, "to_id") else str(key)
+        return self._load_lang(lang).get(key_id)
+
+
+# i18n support (configured without importing domain)
 _catalog: Optional[Any] = None
 _default_lang: str = "en"
 
 
 def configure_i18n(catalog: Optional[Any] = None, default_lang: str = "en") -> None:
-    """Configure a MessageCatalog instance for translations.
+    """Configure a catalog instance for translations.
 
-    If `catalog` is None the function will create a default
-    `ncplot7py.domain.i18n.MessageCatalog` instance.
+    If `catalog` is None the function creates a built-in locale catalog
+    backed by `ncplot7py.locales`.
     """
     global _catalog, _default_lang
     _default_lang = default_lang
     if catalog is None:
         try:
-            from ncplot7py.domain.i18n import MessageCatalog  # type: ignore
-
-            _catalog = MessageCatalog()
+            _catalog = _DefaultLocaleCatalog()
         except Exception:
             _catalog = None
     else:

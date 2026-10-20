@@ -39,7 +39,7 @@ class FanucTurnSpindleHandler(Handler):
             if m_code in self.TURNING_SPINDLE_START:
                 state.set_modal("spindle_direction", m_code)
                 state.set_machining_mode("turning")
-                state.extra["fanuc_turn_spindle_stopped"] = False
+                state.fanuc_state.turn_spindle_stopped = False
                 state.spindle_state["main"] = {
                     "direction": m_code,
                     "active": True,
@@ -52,7 +52,7 @@ class FanucTurnSpindleHandler(Handler):
                     "active": False,
                     "speed": 0.0,
                 }
-                state.extra["fanuc_turn_spindle_stopped"] = True
+                state.fanuc_state.turn_spindle_stopped = True
                 state.set_machining_mode("milling")
             elif m_code in self.MILLING_TOOL_START:
                 state.set_machining_mode("milling")
