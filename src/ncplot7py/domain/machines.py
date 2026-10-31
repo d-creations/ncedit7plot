@@ -408,7 +408,7 @@ def get_machine_regex_patterns(control_type: str) -> Dict[str, Any]:
         mode = policy.get("mode", "direct")
         if mode == "star":
             tool_min, tool_max = policy.get("tool_digits", [3, 4])
-            pattern = rf"T\s*(?=0*[0-9]{{{tool_min},{tool_max}}}(?![\d.]))0*([1-9][0-9]{{0,{tool_max - 1}}})(?![\d.])"
+            pattern = rf"(?![^()]*\))(?<![A-Za-z])T\s*(?=0*[0-9]{{{tool_min},{tool_max}}}(?![\d.]))0*([1-9][0-9]{{0,{tool_max - 1}}})(?![\d.])"
         elif mode == "direct":
             pattern = rf"T\s*0*([0-9]{{1,{digits}}})(?![\d.])"
             if policy.get("named_tools"):

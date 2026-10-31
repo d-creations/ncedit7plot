@@ -136,7 +136,17 @@ class TestToolHandler(unittest.TestCase):
             "FANUC_TURN": [("T0102", 1), ("T0100", 1), ("T02", None)],
             "FANUC_STAR_x-D_y-D_z_R.M.S": [
                 ("T2500", 2500), ("T25", None), ("T3411", 3411),
-                ("T3412", 3412), ("T0102", 102),
+                ("T3412", 3412), ("T0102", 102), ("G01T100M3S1000", 100),
+                ("WHILE[1LT111]DO1", None), ("IF[#10GT100]GOTO400", None),
+                ("(T100)", None), ("(T1o)", None),
+            ],
+            "FANUC_STAR_SR20R_IV_B": [
+                ("T3100", 3100), ("G01T100M3S1000", 100),
+                ("WHILE[1LT111]DO1", None), ("(T3100)", None),
+            ],
+            "FANUC_STAR_SV20R": [
+                ("T3100", 3100), ("G01T100M3S1000", 100),
+                ("WHILE[1LT111]DO1", None), ("(T3100)", None),
             ],
         }
         for machine, samples in cases.items():

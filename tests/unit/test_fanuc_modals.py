@@ -175,6 +175,19 @@ class TestFanucModals(unittest.TestCase):
         self.assertEqual(cstate.get_axis("C"), 0.0)
         self.assertEqual(canal.get_tool_path(), [])
 
+    def test_fanuc_mill_m6_does_not_reset_c_axis(self):
+        for machine_name in ("FANUC_MILL", "FANUC_MILL_DEMO"):
+            with self.subTest(machine_name=machine_name):
+                cstate = CNCState(axes={"X": 0.0, "Y": 0.0, "Z": 0.0, "C": 90.0})
+                cstate.machine_config = get_machine_config(machine_name)
+                canal = UniversalConfigDrivenCanal("C1", init_state=cstate)
+                cstate.set_axis("C", 90.0)
+
+                canal.run_nc_code_list([NCCommandNode(command_parameter={"M": "06"})])
+
+                self.assertEqual(cstate.get_axis("C"), 90.0)
+                self.assertEqual(canal.get_tool_path(), [])
+
     def test_fanuc_mill_coolant_codes_are_modal(self):
         cstate = CNCState(); cstate.machine_config = get_machine_config("FANUC_MILL")
         canal = UniversalConfigDrivenCanal("C1", init_state=cstate)

@@ -359,11 +359,11 @@
         }
       },
       "keywords": {
-        "pattern": "(T0*(100|[1-9][0-9]{2,3})(?!\\d)|M(2[0-9]{2}|[3-8][0-8]{2})|M82|M83|M20|G(?:255|266)|M30)",
+        "pattern": "(?![^()]*\\))((?<![A-Za-z])T0*(100|[1-9][0-9]{2,3})(?![\\d.])|M(2[0-9]{2}|[3-8][0-8]{2})|M82|M83|M20|G(?:255|266)|M30)",
         "description": "Keywords: T100-T9999, M200-M888, M82, M83, M20, G255, G266, M30",
         "codes": {
           "extended_tools": {
-            "pattern": "T0*(100|[1-9][0-9]{2,3})(?!\\d)",
+            "pattern": "(?![^()]*\\))(?<![A-Za-z])T0*(100|[1-9][0-9]{2,3})(?![\\d.])",
             "range": {
               "min": 100,
               "max": 9999
@@ -522,11 +522,11 @@
         }
       },
       "keywords": {
-        "pattern": "(T0*(100|[1-9][0-9]{2,3})(?!\\d)|M(2[0-9]{2}|[3-8][0-8]{2})|M82|M83|M20|G(?:255|266)|M30)",
+        "pattern": "(?![^()]*\\))((?<![A-Za-z])T0*(100|[1-9][0-9]{2,3})(?![\\d.])|M(2[0-9]{2}|[3-8][0-8]{2})|M82|M83|M20|G(?:255|266)|M30)",
         "description": "Keywords: T100-T9999, M200-M888, M82, M83, M20, G255, G266, M30",
         "codes": {
           "extended_tools": {
-            "pattern": "T0*(100|[1-9][0-9]{2,3})(?!\\d)",
+            "pattern": "(?![^()]*\\))(?<![A-Za-z])T0*(100|[1-9][0-9]{2,3})(?![\\d.])",
             "range": {
               "min": 100,
               "max": 9999
@@ -732,11 +732,11 @@
         }
       },
       "keywords": {
-        "pattern": "(T0*(100|[1-9][0-9]{2,3})(?!\\d)|M(2[0-9]{2}|[3-8][0-8]{2})|M82|M83|M20|G(?:255|266)|M30)",
+        "pattern": "(?![^()]*\\))((?<![A-Za-z])T0*(100|[1-9][0-9]{2,3})(?![\\d.])|M(2[0-9]{2}|[3-8][0-8]{2})|M82|M83|M20|G(?:255|266)|M30)",
         "description": "Keywords: T100-T9999, M200-M888, M82, M83, M20, G255, G266, M30",
         "codes": {
           "extended_tools": {
-            "pattern": "T0*(100|[1-9][0-9]{2,3})(?!\\d)",
+            "pattern": "(?![^()]*\\))(?<![A-Za-z])T0*(100|[1-9][0-9]{2,3})(?![\\d.])",
             "range": {
               "min": 100,
               "max": 9999
@@ -937,11 +937,11 @@
         }
       },
       "keywords": {
-        "pattern": "(T0*(100|[1-9][0-9]{2,3})(?!\\d)|M(2[0-9]{2}|[3-8][0-8]{2})|M82|M83|M20|G(?:255|266)|M30)",
+        "pattern": "(?![^()]*\\))((?<![A-Za-z])T0*(100|[1-9][0-9]{2,3})(?![\\d.])|M(2[0-9]{2}|[3-8][0-8]{2})|M82|M83|M20|G(?:255|266)|M30)",
         "description": "Keywords: T100-T9999, M200-M888, M82, M83, M20, G255, G266, M30",
         "codes": {
           "extended_tools": {
-            "pattern": "T0*(100|[1-9][0-9]{2,3})(?!\\d)",
+            "pattern": "(?![^()]*\\))(?<![A-Za-z])T0*(100|[1-9][0-9]{2,3})(?![\\d.])",
             "range": {
               "min": 100,
               "max": 9999
@@ -1963,40 +1963,50 @@
     "lexer_name": "fanuc",
     "machine_type": "TURN_MILL",
     "channels": 2,
-    "keywords": {
-      "pattern": "(T0*(100|[1-9][0-9]{2,3})(?!\\d)|M(2[0-9]{2}|[3-8][0-8]{2})|M82|M83|M20|G(?:255|266)|M30)",
-      "description": "Keywords: T100-T9999, M200-M888, M82, M83, M20, G255, G266, M30",
-      "codes": {
-        "extended_tools": {
-          "pattern": "T0*(100|[1-9][0-9]{2,3})(?!\\d)",
-          "range": {
-            "min": 100,
-            "max": 9999
-          }
-        },
-        "m_codes_range": {
-          "pattern": "M(2[0-9]{2}|[3-8][0-8]{2})",
-          "range": {
-            "min": 200,
-            "max": 888
-          }
-        },
-        "special_m_codes": [
-          "M82",
-          "M83",
-          "M20"
-        ],
-        "g_codes": [
-          "G255",
-          "G266"
-        ],
-        "program_control": [
-          "M0",
-          "M1",
-          "M3",
-          "M5",
-          "M30"
-        ]
+    "regex_patterns": {
+      "variables": {
+        "pattern": "#(\\d+)",
+        "description": "Variables #1 - #999",
+        "range": {
+          "min": 1,
+          "max": 999
+        }
+      },
+      "keywords": {
+        "pattern": "(?![^()]*\\))((?<![A-Za-z])T0*(100|[1-9][0-9]{2,3})(?![\\d.])|M(2[0-9]{2}|[3-8][0-8]{2})|M82|M83|M20|G(?:255|266)|M30)",
+        "description": "Keywords: T100-T9999, M200-M888, M82, M83, M20, G255, G266, M30",
+        "codes": {
+          "extended_tools": {
+            "pattern": "(?![^()]*\\))(?<![A-Za-z])T0*(100|[1-9][0-9]{2,3})(?![\\d.])",
+            "range": {
+              "min": 100,
+              "max": 9999
+            }
+          },
+          "m_codes_range": {
+            "pattern": "M(2[0-9]{2}|[3-8][0-8]{2})",
+            "range": {
+              "min": 200,
+              "max": 888
+            }
+          },
+          "special_m_codes": [
+            "M82",
+            "M83",
+            "M20"
+          ],
+          "g_codes": [
+            "G255",
+            "G266"
+          ],
+          "program_control": [
+            "M0",
+            "M1",
+            "M3",
+            "M5",
+            "M30"
+          ]
+        }
       }
     },
     "axes": [
@@ -2137,6 +2147,13 @@
     "default_plane": "G18",
     "default_feed_mode": "FEED_PER_REV",
     "rapid_feed_rate": 20000.0,
+    "a_axis_rollover": false,
+    "b_axis_rollover": false,
+    "c_axis_rollover": true,
+    "a_axis_shortest_path": false,
+    "b_axis_shortest_path": false,
+    "c_axis_shortest_path": true,
+    "polar_interpolate_axis": "Y",
     "diameter_axes": [
       "X1",
       "Y1",
@@ -2376,40 +2393,50 @@
     "parser_name": "fanuc",
     "lexer_name": "fanuc",
     "machine_type": "TURN_MILL",
-    "keywords": {
-      "pattern": "(T0*(100|[1-9][0-9]{2,3})(?!\\d)|M(2[0-9]{2}|[3-8][0-8]{2})|M82|M83|M20|G(?:255|266)|M30)",
-      "description": "Keywords: T100-T9999, M200-M888, M82, M83, M20, G255, G266, M30",
-      "codes": {
-        "extended_tools": {
-          "pattern": "T0*(100|[1-9][0-9]{2,3})(?!\\d)",
-          "range": {
-            "min": 100,
-            "max": 9999
-          }
-        },
-        "m_codes_range": {
-          "pattern": "M(2[0-9]{2}|[3-8][0-8]{2})",
-          "range": {
-            "min": 200,
-            "max": 888
-          }
-        },
-        "special_m_codes": [
-          "M82",
-          "M83",
-          "M20"
-        ],
-        "g_codes": [
-          "G255",
-          "G266"
-        ],
-        "program_control": [
-          "M0",
-          "M1",
-          "M3",
-          "M5",
-          "M30"
-        ]
+    "regex_patterns": {
+      "variables": {
+        "pattern": "#(\\d+)",
+        "description": "Variables #1 - #999",
+        "range": {
+          "min": 1,
+          "max": 999
+        }
+      },
+      "keywords": {
+        "pattern": "(?![^()]*\\))((?<![A-Za-z])T0*(100|[1-9][0-9]{2,3})(?![\\d.])|M(2[0-9]{2}|[3-8][0-8]{2})|M82|M83|M20|G(?:255|266)|M30)",
+        "description": "Keywords: T100-T9999, M200-M888, M82, M83, M20, G255, G266, M30",
+        "codes": {
+          "extended_tools": {
+            "pattern": "(?![^()]*\\))(?<![A-Za-z])T0*(100|[1-9][0-9]{2,3})(?![\\d.])",
+            "range": {
+              "min": 100,
+              "max": 9999
+            }
+          },
+          "m_codes_range": {
+            "pattern": "M(2[0-9]{2}|[3-8][0-8]{2})",
+            "range": {
+              "min": 200,
+              "max": 888
+            }
+          },
+          "special_m_codes": [
+            "M82",
+            "M83",
+            "M20"
+          ],
+          "g_codes": [
+            "G255",
+            "G266"
+          ],
+          "program_control": [
+            "M0",
+            "M1",
+            "M3",
+            "M5",
+            "M30"
+          ]
+        }
       }
     },
     "channels": 3,
@@ -2553,6 +2580,14 @@
     "default_plane": "G18",
     "default_feed_mode": "FEED_PER_REV",
     "rapid_feed_rate": 20000.0,
+
+    "a_axis_rollover": false,
+    "b_axis_rollover": false,
+    "c_axis_rollover": true,
+    "a_axis_shortest_path": false,
+    "b_axis_shortest_path": false,
+    "c_axis_shortest_path": true,
+    "polar_interpolate_axis": "Y",
     "diameter_axes": [
       "X1",
       "Y1",
@@ -2780,40 +2815,50 @@
     "parser_name": "fanuc",
     "lexer_name": "fanuc",
     "machine_type": "TURN",
-    "keywords": {
-      "pattern": "(T0*(100|[1-9][0-9]{2,3})(?!\\d)|M(2[0-9]{2}|[3-8][0-8]{2})|M82|M83|M20|G(?:255|266)|M30)",
-      "description": "Keywords: T100-T9999, M200-M888, M82, M83, M20, G255, G266, M30",
-      "codes": {
-        "extended_tools": {
-          "pattern": "T0*(100|[1-9][0-9]{2,3})(?!\\d)",
-          "range": {
-            "min": 100,
-            "max": 9999
-          }
-        },
-        "m_codes_range": {
-          "pattern": "M(2[0-9]{2}|[3-8][0-8]{2})",
-          "range": {
-            "min": 200,
-            "max": 888
-          }
-        },
-        "special_m_codes": [
-          "M82",
-          "M83",
-          "M20"
-        ],
-        "g_codes": [
-          "G255",
-          "G266"
-        ],
-        "program_control": [
-          "M0",
-          "M1",
-          "M3",
-          "M5",
-          "M30"
-        ]
+    "regex_patterns": {
+      "variables": {
+        "pattern": "#(\\d+)",
+        "description": "Variables #1 - #999",
+        "range": {
+          "min": 1,
+          "max": 999
+        }
+      },
+      "keywords": {
+        "pattern": "(?![^()]*\\))((?<![A-Za-z])T0*(100|[1-9][0-9]{2,3})(?![\\d.])|M(2[0-9]{2}|[3-8][0-8]{2})|M82|M83|M20|G(?:255|266)|M30)",
+        "description": "Keywords: T100-T9999, M200-M888, M82, M83, M20, G255, G266, M30",
+        "codes": {
+          "extended_tools": {
+            "pattern": "(?![^()]*\\))(?<![A-Za-z])T0*(100|[1-9][0-9]{2,3})(?![\\d.])",
+            "range": {
+              "min": 100,
+              "max": 9999
+            }
+          },
+          "m_codes_range": {
+            "pattern": "M(2[0-9]{2}|[3-8][0-8]{2})",
+            "range": {
+              "min": 200,
+              "max": 888
+            }
+          },
+          "special_m_codes": [
+            "M82",
+            "M83",
+            "M20"
+          ],
+          "g_codes": [
+            "G255",
+            "G266"
+          ],
+          "program_control": [
+            "M0",
+            "M1",
+            "M3",
+            "M5",
+            "M30"
+          ]
+        }
       }
     },
     "channels": 2,
@@ -2903,6 +2948,14 @@
     "default_plane": "G18",
     "default_feed_mode": "FEED_PER_REV",
     "rapid_feed_rate": 20000.0,
+
+    "a_axis_rollover": false,
+    "b_axis_rollover": false,
+    "c_axis_rollover": true,
+    "a_axis_shortest_path": false,
+    "b_axis_shortest_path": false,
+    "c_axis_shortest_path": true,
+    "polar_interpolate_axis": "Y",
     "diameter_axes": [
       "X"
     ],

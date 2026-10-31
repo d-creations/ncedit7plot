@@ -7,8 +7,6 @@ from ncplot7py.domain.handlers.mcode_modal import BaseModalMCodeHandler
 
 
 class FanucMillModalMCodeHandler(BaseModalMCodeHandler):
-    c_axis_reset_codes = {"M6"}
-
     def _apply_machine_specific_state(self, m_code: Optional[str], state: CNCState) -> None:
         if m_code in {"M3", "M4", "M5"}:
             state.machining_mode = "milling"

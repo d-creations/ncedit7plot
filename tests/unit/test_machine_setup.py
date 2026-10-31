@@ -152,16 +152,27 @@ class TestMachineSetup(unittest.TestCase):
             self.assertRegex(variable, variable_pattern)
 
     def test_fanuc_frontend_keyword_pattern_accepts_zero_padded_tools(self):
-        patterns = get_machine_regex_patterns("FANUC_STAR_x-D_y-R_z_R")
-
-        for pattern in [
-            patterns["keywords"]["pattern"],
-            patterns["keywords"]["codes"]["extended_tools"]["pattern"],
+        for machine_name in [
+            "FANUC_STAR_x-D_y-R_z_R",
+            "FANUC_STAR_SR20R_IV_B",
+            "FANUC_STAR_SV20R",
+            "FANUC_STAR_SG42",
         ]:
-            with self.subTest(pattern=pattern):
-                self.assertRegex("T500", f"^(?:{pattern})$")
-                self.assertRegex("T0500", f"^(?:{pattern})$")
-                self.assertNotRegex("T050", f"^(?:{pattern})$")
+            patterns = get_machine_regex_patterns(machine_name)
+
+            for pattern in [
+                patterns["keywords"]["pattern"],
+                patterns["keywords"]["codes"]["extended_tools"]["pattern"],
+            ]:
+                with self.subTest(machine=machine_name, pattern=pattern):
+                    self.assertRegex("T500", f"^(?:{pattern})$")
+                    self.assertRegex("T0500", f"^(?:{pattern})$")
+                    self.assertNotRegex("T050", f"^(?:{pattern})$")
+                    self.assertIsNotNone(re.search(pattern, "G01T100M3S1000"))
+                    self.assertIsNone(re.search(pattern, "WHILE[1LT111]DO1"))
+                    self.assertIsNone(re.search(pattern, "IF[#17GT100]"))
+                    self.assertIsNone(re.search(pattern, "(T100)"))
+                    self.assertIsNone(re.search(pattern, "(T1o)"))
 
     def test_frontend_regex_patterns_come_from_machine_config(self):
         configured_patterns = {"keywords": {"pattern": "CUSTOM_KEYWORD"}}

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.1] - 2026-10-31
+
+### Fixed
+- Removed `M6` from `c_axis_reset_codes` in `FanucMillModalMCodeHandler` (`FANUC_MILL` and `FANUC_MILL_DEMO`) so tool-change `M6` commands no longer reset the `C` axis to `0°`.
+- Refined STAR tool and keyword regex patterns in `machines.py` and `machines.json` to ignore matches inside comments (`(...)`) and comparison operators (e.g., `LT111`, `GT100`).
+- Added missing `regex_patterns` structure, rotary rollover/shortest-path flags, and `polar_interpolate_axis` configuration to `FANUC_STAR_SR20R_IV_B`, `FANUC_STAR_SV20R`, and `FANUC_STAR_SG42`.
+
+---
+
 ## [0.4.0] - 2026-10-20
 
 ### Added
