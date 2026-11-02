@@ -61,7 +61,7 @@ FANUC_MILL_GCODE_GROUPS = {
     
     "G112": 21, "G113": 21,
     
-    "G160": 20, "G161": 20
+    "G160": 20
 }
 
 class FanucMillGCodeGroupValidator(Handler):

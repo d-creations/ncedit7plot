@@ -63,6 +63,92 @@ class TestStarG161StepCycle(unittest.TestCase):
         self.assertNotIn("star.machining_mode", state.extra)
         self.assertEqual(state.extra["star.g161"]["parameters"]["q"], 3.0)
 
+    def test_star_turn_g161_program_retains_parameters_and_accepts_incremental_uvw(self):
+        state = self._state()
+        canal = UniversalConfigDrivenCanal("C1", init_state=state)
+        nodes = [
+            NCCommandNode(g_code_command={"G1"}, command_parameter={"Z": "0.0", "X": "0.0"}),
+            NCCommandNode(
+                g_code_command={"G162"},
+                command_parameter={"X": "10.0", "Z": "5.0", "R": "5.0", "A": "2.0", "D": "1.0", "F": "0.03"},
+            ),
+            NCCommandNode(
+                g_code_command={"G161"},
+                command_parameter={"Z": "10.0", "A": "2.0", "D": "2.0", "F": "0.03"},
+            ),
+            NCCommandNode(g_code_command={"G161"}, command_parameter={"X": "20.0", "Z": "15.0"}),
+            NCCommandNode(g_code_command={"G161"}, command_parameter={"U": "10.0"}),
+            NCCommandNode(g_code_command={"G161"}, command_parameter={"W": "3.0"}),
+        ]
+
+        canal.run_nc_code_list(nodes)
+
+        self.assertAlmostEqual(state.get_axis("X"), 15.0)
+        self.assertAlmostEqual(state.get_axis("Y"), 0.0)
+        self.assertAlmostEqual(state.get_axis("Z"), 18.0)
+        self.assertAlmostEqual(state.get_axis("A"), 0.0)
+        self.assertEqual(
+            state.extra["star.g161"]["parameters"],
+            {"a": 2.0, "f": 0.03, "d": 2.0, "q": None},
+        )
+        executed_nodes = canal.get_exec_nodes()
+        self.assertEqual(executed_nodes[1].motion_geometry, "ARC_CW")
+        self.assertEqual(executed_nodes[2].motion_source_code, "G161")
+
+    def test_star_turn_g161_accepts_incremental_v(self):
+        state = self._state()
+        canal = UniversalConfigDrivenCanal("C1", init_state=state)
+        canal.run_nc_code_list([
+            NCCommandNode(
+                g_code_command={"G161"},
+                command_parameter={"V": "4.0", "A": "1.0", "D": "1.0", "F": "0.1"},
+            )
+        ])
+
+        self.assertAlmostEqual(state.get_axis("Y"), 4.0)
+
+    def test_star_turn_g162_g163_match_native_g2_g3_toolpaths(self):
+        def run_program(use_aliases):
+            state = self._state()
+            canal = UniversalConfigDrivenCanal("C1", init_state=state)
+            clockwise_code, counterclockwise_code = (
+                ("G162", "G163") if use_aliases else ("G2", "G3")
+            )
+            clockwise_parameters = {"X": "10.0", "Z": "5.0", "R": "5.0", "F": "0.03"}
+            counterclockwise_parameters = {"X": "0.0", "Z": "0.0", "R": "5.0"}
+            if use_aliases:
+                clockwise_parameters.update({"A": "2.0", "D": "1.0"})
+                counterclockwise_parameters.update({"A": "3.0", "D": "2.0"})
+
+            canal.run_nc_code_list([
+                NCCommandNode(g_code_command={"G1"}, command_parameter={"X": "0.0", "Z": "0.0"}),
+                NCCommandNode(g_code_command={clockwise_code}, command_parameter=clockwise_parameters),
+                NCCommandNode(g_code_command={counterclockwise_code}, command_parameter=counterclockwise_parameters),
+                NCCommandNode(g_code_command={"G161"}, command_parameter={"Z": "10.0", "A": "2.0", "D": "2.0", "F": "0.03"}),
+                NCCommandNode(g_code_command={"G161"}, command_parameter={"X": "20.0", "Z": "15.0"}),
+                NCCommandNode(g_code_command={"G161"}, command_parameter={"U": "10.0"}),
+                NCCommandNode(g_code_command={"G161"}, command_parameter={"W": "3.0"}),
+            ])
+
+            path = [
+                (
+                    [
+                        (round(point.x, 6), round(point.y, 6), round(point.z, 6))
+                        for point in points
+                    ],
+                    round(duration, 6),
+                )
+                for points, duration in canal.get_tool_path()
+            ]
+            return state, path
+
+        alias_state, alias_path = run_program(use_aliases=True)
+        native_state, native_path = run_program(use_aliases=False)
+
+        self.assertEqual(alias_path, native_path)
+        self.assertEqual(alias_state.axes, native_state.axes)
+        self.assertAlmostEqual(alias_state.get_axis("A"), 0.0)
+
     def test_g161_accepts_only_a_and_d_without_q_or_m41(self):
         state = self._state()
         state.spindle_speed = 0.0
