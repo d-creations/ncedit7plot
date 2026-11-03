@@ -4,6 +4,7 @@ from copy import deepcopy
 from dataclasses import asdict, replace
 from unittest.mock import patch
 
+from ncplot7py.domain.cnc_state import CNCState
 from ncplot7py.domain.machines import (
     get_machine_config, load_machine_configs, validate_simulation_config,
 )
@@ -12,6 +13,8 @@ from ncplot7py.domain.simulation_contract import (
     validate_pose_request,
 )
 from ncplot7py.domain.tool_pose import ToolPoseError, project_fixed_target_poses
+from ncplot7py.infrastructure.machines.base_stateful_control import UniversalConfigDrivenControl
+from ncplot7py.shared.nc_nodes import NCCommandNode
 
 
 def simulation():
@@ -35,6 +38,37 @@ def simulation():
 
 
 class TestSimulationContract(unittest.TestCase):
+    def test_generic_star_profiles_share_sr20r_kinematics_and_keep_diameter_axes(self):
+        reference = get_machine_config("FANUC_STAR_SR20R_IV_B")
+        reference_state = CNCState(machine_config=reference)
+        self.assertEqual(reference_state.normalize_target_spec({"Y": 10})["Y"], 5)
+        self.assertEqual(reference_state.normalize_target_spec({"Y1": 10})["Y1"], 5)
+        for name, y_is_diameter in (
+            ("FANUC_STAR_x-D_y-R_z_R", False),
+            ("FANUC_STAR_x-D_y-D_z_R", True),
+        ):
+            with self.subTest(profile=name):
+                config = get_machine_config(name)
+                self.assertEqual(config.axes, reference.axes)
+                self.assertEqual(config.axis_bindings, reference.axis_bindings)
+                self.assertEqual(config.simulation, reference.simulation)
+                self.assertIn("axis_binding", config.supported_gcode_groups)
+                self.assertEqual(
+                    config.simulation_metadata()["supportedPoseContracts"],
+                    [POSE_CONTRACT],
+                )
+                state = CNCState(machine_config=config)
+                self.assertEqual(state.normalize_target_spec({"X1": 10})["X1"], 5)
+                self.assertEqual(
+                    state.normalize_target_spec({"Y1": 10})["Y1"],
+                    5 if y_is_diameter else 10,
+                )
+                control = UniversalConfigDrivenControl(init_nc_states=[state])
+                control.run_nc_code_list([
+                    NCCommandNode(g_code_command={"G1"}, command_parameter={"Y": "10", "F": "100"}),
+                ], 1)
+                self.assertEqual(state.get_axis("Y1"), 5 if y_is_diameter else 10)
+
     def test_invalid_reload_preserves_entire_previous_registry(self):
         previous = get_machine_config("FANUC_MILL")
         data = asdict(previous)

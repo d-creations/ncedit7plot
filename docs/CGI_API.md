@@ -5,7 +5,8 @@ This document describes the CGI interface implemented by `scripts/cgiserver.cgi`
 ## Simulation negotiation and R0 (2026-09-14)
 
 One POST executes all selected channels together. Simulation configuration and
-request negotiation are implemented; workpiece tool-pose production is not.
+tool-pose output are available for exact server profiles that advertise the
+`workpiece-tool-reference-v1` contract.
 Discovery includes `axes`, `availableChannels`, `profileRevision`,
 `supportedPoseContracts`, and `simulation` when configured. The fingerprint
 covers all loaded execution/simulation fields. Undeclared axes are `[]`.
@@ -34,12 +35,15 @@ The pose-request shape is:
 }
 ```
 
-This is a negotiation example, not enabled pose execution. Currently
-supportedPoseContracts is empty. Validated requests return
-POSE_CONTRACT_UNSUPPORTED before execution, not downgraded XYZ data. Stale
-revisions return PROFILE_REVISION_MISMATCH. Invalid pose data, unknown profiles
-and pose-mode customMachineConfig return SIMULATION_INPUT_INVALID. The error
-envelope is `{success:false, canal:{}, message:[...], errors:[{code,message,channelId?}]}`.
+The profile revision must match discovery, and each `toolNumber` must match the
+active tool selected by the NC program. The engine returns sampled poses on
+each corresponding output segment, alongside its XYZ points and motion
+geometry. Profiles that do not advertise the contract return
+POSE_CONTRACT_UNSUPPORTED before execution; pose requests are never silently
+downgraded to path-only output. Stale revisions return
+PROFILE_REVISION_MISMATCH. Invalid pose data, unknown profiles and pose-mode
+customMachineConfig return SIMULATION_INPUT_INVALID. The error envelope is
+`{success:false, canal:{}, message:[...], errors:[{code,message,channelId?}]}`.
 Path-only requests omit poseContract and the per-entry simulation field.
 
 Explicit rValue=0 is valid in toolValues and positive-numbered toolOffsets.
@@ -105,9 +109,16 @@ The CGI stores supplied values in that channel's `CNCState`. `lengthValue` and
 These are defined dynamically in `ncplot7py/config/machines.json`. Common defaults include:
 - FANUC_STAR_x-D_y-R_z_R
 - FANUC_STAR_x-D_y-D_z_R
+- FANUC_STAR_SR20R_IV_B
 - FANUC_TURN
 - FANUC_MILL
 - SIEMENS_840DI
+
+The two generic STAR profiles reuse the SR-20R IV Type B axis bindings and
+simulation kinematics. Their diameter conventions remain profile-specific:
+`FANUC_STAR_x-D_y-R_z_R` keeps Y in radius, while
+`FANUC_STAR_x-D_y-D_z_R` treats Y as diameter. Both logical Y and physical
+`Y1`/`Y2` axes on `FANUC_STAR_SR20R_IV_B` are configured as diameter axes.
 
 ## Bring Your Own Config (BYOC)
 Instead of relying strictly on server-defined defaults, clients can dynamically configure the execution parameters by sending a `customMachineConfig` object within the request. If provided, these values override the settings derived from `machineName`. Example properties (all optional):

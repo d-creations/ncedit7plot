@@ -40,6 +40,91 @@ class TestCgiServerConversion(unittest.TestCase):
         self.assertEqual(segments[0]["points"][0]["y"], 0)
         self.assertEqual(segments[-1]["points"][-1]["y"], 2)
 
+    def test_sr20riv_pose_output_covers_g161_linear_and_g162_g163_arcs(self):
+        cgiserver = _load_cgiserver_module()
+        config = cgiserver.get_machine_config("FANUC_STAR_SR20R_IV_B")
+        entry = {
+            "machineName": config.name,
+            "canalNr": "1",
+            "program": (
+                "G97G99M3S1000\n"
+                "T0200\n"
+                "G1X10Z-1F0.1\n"
+                "G161X12Z5A3D2F0.03\n"
+                "G162X15Z8R3A3D2F0.03\n"
+                "G163X12Z10R2A3D2F0.03"
+            ),
+            "simulation": {
+                "profileRevision": config.simulation_metadata()["profileRevision"],
+                "tools": [{
+                    "toolNumber": 200,
+                    "reference": "turningVirtualTip",
+                    "mountingOrientationDegrees": [0, 0, 0],
+                }],
+            },
+        }
+        payload = {
+            "poseContract": "workpiece-tool-reference-v1",
+            "toolPathMode": "center",
+            "machinedata": [entry],
+        }
+
+        result = cgiserver.handle_execute_programs(
+            [entry], tool_path_mode="center", request_payload=payload,
+        )
+
+        self.assertTrue(result["success"], result.get("errors"))
+        segments = result["canal"]["1"]["segments"]
+        by_source = {segment["sourceCode"]: segment for segment in segments}
+        self.assertEqual(by_source["G161"]["geometry"], "LINEAR")
+        self.assertEqual(by_source["G162"]["geometry"], "ARC_CW")
+        self.assertEqual(by_source["G163"]["geometry"], "ARC_CCW")
+        for source_code in ("G161", "G162", "G163"):
+            segment = by_source[source_code]
+            self.assertEqual(len(segment["poses"]), len(segment["points"]))
+            self.assertEqual(segment["poses"][-1]["position"], [
+                segment["points"][-1][axis] for axis in ("x", "y", "z")
+            ])
+
+    def test_generic_star_profiles_emit_poses_with_channel_axis_bindings(self):
+        cgiserver = _load_cgiserver_module()
+        for machine_name, expected_y in (
+            ("FANUC_STAR_x-D_y-R_z_R", 10),
+            ("FANUC_STAR_x-D_y-D_z_R", 5),
+        ):
+            with self.subTest(machine=machine_name):
+                config = cgiserver.get_machine_config(machine_name)
+                entry = {
+                    "machineName": config.name,
+                    "canalNr": "1",
+                    "program": "G97G99M3S1000\nT0200\nG1Y10F0.1",
+                    "simulation": {
+                        "profileRevision": config.simulation_metadata()["profileRevision"],
+                        "tools": [{
+                            "toolNumber": 200,
+                            "reference": "turningVirtualTip",
+                            "mountingOrientationDegrees": [0, 0, 0],
+                        }],
+                    },
+                }
+                payload = {
+                    "poseContract": "workpiece-tool-reference-v1",
+                    "toolPathMode": "center",
+                    "machinedata": [entry],
+                }
+
+                result = cgiserver.handle_execute_programs(
+                    [entry], tool_path_mode="center", request_payload=payload,
+                )
+
+                self.assertTrue(result["success"], result.get("errors"))
+                segment = next(
+                    segment for segment in result["canal"]["1"]["segments"]
+                    if segment["sourceCode"] == "G01"
+                )
+                self.assertEqual(segment["points"][-1]["y"], expected_y)
+                self.assertEqual(segment["poses"][-1]["position"][1], expected_y)
+
     def test_api_rejects_duplicate_offset_data(self):
         cgiserver = _load_cgiserver_module()
         result = cgiserver.handle_execute_programs([{

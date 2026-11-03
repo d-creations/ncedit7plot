@@ -372,6 +372,26 @@ def load_machine_configs():
                     spindles=deepcopy(val.get('spindles', {})),
                 )
                 
+        # Reuse a verified physical machine model while keeping each profile's
+        # control and coordinate-unit settings independent.
+        for key, val in data.items():
+            if not isinstance(val, dict):
+                continue
+            kinematics_profile = val.get("kinematics_profile")
+            if kinematics_profile is None:
+                continue
+            base_config = loaded_configs.get(kinematics_profile)
+            if base_config is None or base_config.simulation is None:
+                raise ValueError(f"Unknown or incomplete kinematics_profile: {kinematics_profile}")
+            config = loaded_configs[key]
+            if config.channels != base_config.channels:
+                raise ValueError(f"Kinematics profile channel count mismatch: {kinematics_profile}")
+            config.axes = base_config.axes
+            config.axis_bindings = deepcopy(base_config.axis_bindings)
+            config.simulation = validate_simulation_config(
+                deepcopy(base_config.simulation), config.channels, config.axes,
+            )
+
         # Second pass: resolve aliases
         for key, val in data.items():
             if isinstance(val, str) and val in loaded_configs:
