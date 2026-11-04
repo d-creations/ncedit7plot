@@ -30,6 +30,7 @@ class SiemensMotionHandler(Handler):
 
     _GEOMETRY_AXES = {"X", "Y", "Z", "A", "B", "C"}
     _INCREMENTAL_AXES = {"U": "X", "V": "Y", "W": "Z", "H": "C"}
+    _DIAM_AXIS_RE = re.compile(r"^(DIAMONA|DIAMOFA|DIAM90A|DIAMCHANA)\s*\[\s*([A-Za-z][A-Za-z0-9_]*)\s*\]")
 
     def __init__(self, next_handler: Optional[Handler] = None):
         super().__init__(next_handler=next_handler)
@@ -37,7 +38,8 @@ class SiemensMotionHandler(Handler):
 
     def handle(self, node: NCCommandNode, state: CNCState) -> Tuple[Optional[List[Point]], Optional[float]]:
         scope = ensure_siemens_scope(state)
-        self._apply_modal_command(node, state, scope)
+        if node.variable_command:
+            self._apply_modal_command(node, state, scope)
 
         interp_mode = self._get_interp_mode(node, state)
         if interp_mode is None:
@@ -61,8 +63,9 @@ class SiemensMotionHandler(Handler):
             node.set_motion_metadata("LINEAR", traversal, interp_mode)
             return self._motion_helper._transform_points_for_plot(points, state), duration
         finally:
-            for axis, unit in previous_axis_units.items():
-                state.set_axis_unit(axis, unit)
+            if previous_axis_units:
+                for axis, unit in previous_axis_units.items():
+                    state.set_axis_unit(axis, unit)
 
     def _apply_modal_command(self, node: NCCommandNode, state: CNCState, scope: Dict[str, object]) -> None:
         command = (node.variable_command or "").strip()
@@ -79,7 +82,7 @@ class SiemensMotionHandler(Handler):
             self._apply_channel_diameter_mode(state, upper)
         elif upper == "DIAMCHAN":
             self._apply_channel_diameter_mode(state, str(scope.get("diameter_mode") or "DIAMOF"))
-        elif match := re.match(r"^(DIAMONA|DIAMOFA|DIAM90A|DIAMCHANA)\s*\[\s*([A-Za-z][A-Za-z0-9_]*)\s*\]", upper):
+        elif upper.startswith("DIAM") and (match := self._DIAM_AXIS_RE.match(upper)):
             command_name, axis = match.groups()
             axis = axis.upper()
             mode = {
@@ -128,11 +131,14 @@ class SiemensMotionHandler(Handler):
         return interp_mode
 
     def _has_motion_words(self, node: NCCommandNode, state: CNCState) -> bool:
-        motion_axes = set(self._GEOMETRY_AXES) | set(self._INCREMENTAL_AXES)
+        if not node.command_parameter:
+            return False
         seventh_axis_name = self._motion_helper._get_seventh_axis_name(state)
-        if seventh_axis_name:
-            motion_axes.add(seventh_axis_name)
-        return any(str(key).upper() in motion_axes for key in node.command_parameter)
+        for key in node.command_parameter:
+            upper_key = str(key).upper()
+            if upper_key in self._GEOMETRY_AXES or upper_key in self._INCREMENTAL_AXES or (seventh_axis_name and upper_key == seventh_axis_name):
+                return True
+        return False
 
     def _resolve_target(self, node: NCCommandNode, state: CNCState) -> Dict[str, float]:
         absolute_target_spec: Dict[str, float] = {}

@@ -9,13 +9,20 @@ implementation; it should be extended where needed and unit-tested.
 """
 from __future__ import annotations
 
+from functools import lru_cache
 import re
 from typing import Dict, Optional, Tuple
 
 from ncplot7py.domain.exec_chain import Handler
 from ncplot7py.shared.nc_nodes import NCCommandNode
 from ncplot7py.domain.cnc_state import CNCState
-from ncplot7py.domain.expression_evaluator import ExpressionEvaluator
+from ncplot7py.domain.expression_evaluator import ExpressionEvaluator, _PLAIN_FLOAT_RE
+
+
+@lru_cache(maxsize=32)
+def _get_assign_regex(pattern: str) -> re.Pattern:
+    return re.compile(rf"({pattern})\s*=")
+
 
 class VariableHandler(Handler):
     """Handler that decodes variable assignments and bracketed expressions.
@@ -40,48 +47,37 @@ class VariableHandler(Handler):
             # as well as spaces within expressions (e.g., "#8 = #10 + 20").
             # Therefore, we find all variables followed by an '=' to split assignments.
             var_re = self._evaluator.get_var_regex(state)
-            pattern = var_re.pattern
-            # Find all occurrences of the variable pattern immediately followed by '=' (with optional spaces).
-            # We use re.finditer to find boundaries of assignments.
-            assign_regex = re.compile(rf"({pattern})\s*=")
-            assignments = []
+            assign_regex = _get_assign_regex(var_re.pattern)
             matches = list(assign_regex.finditer(vc))
             for i, match in enumerate(matches):
                 start = match.start()
-                end = matches[i+1].start() if i + 1 < len(matches) else len(vc)
-                assignments.append(vc[start:end].strip())
-
-            for assign in assignments:
+                end = matches[i + 1].start() if i + 1 < len(matches) else len(vc)
+                assign = vc[start:end].strip()
                 if "=" in assign:
                     left, right = assign.split("=", 1)
-                    left = left.strip()
-                    
-                    # Check if left side matches variable pattern
-                    var_re = self._evaluator.get_var_regex(state)
-                    match = var_re.fullmatch(left)
-                    
-                    if match:
-                        var_index = match.group(1)
+                    left_match = var_re.fullmatch(left.strip())
+                    if left_match:
+                        var_index = left_match.group(1)
                         try:
-                            # allow right side to be an expression (possibly bracketed)
-                            expr = right.strip()
-                            # no need to strip [ ] manually, evaluate handles it
-                            val = self._evaluator.evaluate(expr, state)
+                            val = self._evaluator.evaluate(right.strip(), state)
                             state.set_parameter(var_index, float(val))
-                        except Exception as e:
-                            # silent fallback to 0.0 to preserve current behaviour; in future
-                            # we could raise a domain-specific exception with a log_route.
+                        except Exception:
                             state.set_parameter(var_index, 0.0)
 
         # Keep track of original values to restore them after downstream handlers
         orig_command_parameter = None
         orig_g_code = None
 
-        # 2) replace bracketed expressions in command parameters
-        if node.command_parameter:
+        # 2) replace bracketed or variable expressions in command parameters
+        cmd_params = node.command_parameter
+        if cmd_params and any(not _PLAIN_FLOAT_RE.match(str(v)) for v in cmd_params.values()):
+            var_re = self._evaluator.get_var_regex(state)
             new_params: Dict[str, str] = {}
-            for k, v in node.command_parameter.items():
+            for k, v in cmd_params.items():
                 val_str = str(v)
+                if _PLAIN_FLOAT_RE.match(val_str):
+                    new_params[k] = val_str
+                    continue
                 # Handle Siemens style assignment X=R1 -> value is "=R1"
                 if val_str.startswith("="):
                     try:
@@ -93,7 +89,6 @@ class VariableHandler(Handler):
                 else:
                     try:
                         # Before checking brackets, see if the val_str is a variable or negative variable
-                        var_re = self._evaluator.get_var_regex(state)
                         if var_re.fullmatch(val_str) or (val_str.startswith("-") and var_re.fullmatch(val_str[1:])):
                             expr_val = self._evaluator.evaluate(val_str, state)
                             if float(expr_val).is_integer():
@@ -103,7 +98,7 @@ class VariableHandler(Handler):
                         else:
                             new_v = self._evaluator.eval_and_replace_in_string(val_str, state)
                             try:
-                                # After replacing brackets, check if the remaining string is a valid math expression 
+                                # After replacing brackets, check if the remaining string is a valid math expression
                                 # (e.g. "#10/2" resulting from "#10/[#5-2]"). By evaluating the whole remaining string,
                                 # we allow unbracketed expressions to resolve fully.
                                 final_val = self._evaluator.evaluate(new_v, state)
@@ -121,18 +116,20 @@ class VariableHandler(Handler):
                 orig_command_parameter = node._command_parameter
                 node._command_parameter = new_params
             except Exception:
-                # best-effort: if private attr is not present, ignore
                 pass
 
         # 3) replace bracketed expressions in g-code tokens
-        if node.g_code:
+        if node.g_code and any("[" in g for g in node.g_code):
             new_g_codes = set()
             for g in set(node.g_code):
-                try:
-                    new_g = self._evaluator.eval_and_replace_in_string(g, state)
-                except Exception:
-                    new_g = g
-                new_g_codes.add(new_g)
+                if "[" in g:
+                    try:
+                        new_g = self._evaluator.eval_and_replace_in_string(g, state)
+                    except Exception:
+                        new_g = g
+                    new_g_codes.add(new_g)
+                else:
+                    new_g_codes.add(g)
             try:
                 orig_g_code = node._g_code
                 node._g_code = new_g_codes

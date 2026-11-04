@@ -216,7 +216,7 @@ class ToolPathCompensator:
         if compensation.startup_pending:
             self.reset()
             compensation.startup_pending = False
-            projected[0] = Point(**vars(points[0]))
+            projected[0] = points[0].copy()
             self._pending_entry = projected
         elif self._previous_signature == signature:
             if self._pending_entry is not None:
@@ -271,7 +271,7 @@ class ToolPathCompensator:
         axes: Tuple[str, str],
         signed_radius: float,
     ) -> List[Point]:
-        projected = [Point(**vars(point)) for point in points]
+        projected = [point.copy() for point in points]
         tangents: List[Optional[Tuple[float, float]]] = []
         for start, end in zip(points, points[1:]):
             du = getattr(end, axes[0]) - getattr(start, axes[0])

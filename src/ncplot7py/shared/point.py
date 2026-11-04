@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 
-@dataclass
+@dataclass(slots=True)
 class Point:
     """Simple point / toolpath vertex used across the codebase.
 
@@ -16,6 +16,9 @@ class Point:
     a: float = 0.0
     b: float = 0.0
     c: float = 0.0
+
+    def copy(self) -> "Point":
+        return Point(self.x, self.y, self.z, self.a, self.b, self.c)
 
 
 __all__ = ["Point"]

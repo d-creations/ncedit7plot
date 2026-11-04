@@ -14,6 +14,14 @@ from ncplot7py.domain.handlers.siemens_mill_cnc.variable_handler import SiemensE
 class SiemensFlowControlHandler(Handler):
     """Handle Siemens labels, GOTO variants, IF skipping, and simple FOR loops."""
 
+    _DO_LABEL_RE = re.compile(r"DO(\d+)$")
+    _GOTO_RE = re.compile(r"^(GOTOF|GOTOB|GOTOC|GOTO)(.+)$", re.IGNORECASE)
+    _IF_GOTO_RE = re.compile(r"^IF(.+?)(GOTOF|GOTOB|GOTO)(.+)$", re.IGNORECASE)
+    _IF_PREFIX_RE = re.compile(r"^IF", re.IGNORECASE)
+    _FOR_RE = re.compile(r"^FOR([A-Za-z_][A-Za-z0-9_]*)=(.+?)TO(.+)$", re.IGNORECASE)
+    _WHILE_RE = re.compile(r"^WHILE(.+?)(?:DO\d+)?$", re.IGNORECASE)
+    _UNTIL_RE = re.compile(r"^UNTIL\s*(.+)$", re.IGNORECASE)
+
     def __init__(self, next_handler: Optional[Handler] = None):
         super().__init__(next_handler=next_handler)
         self._nodes: list[NCCommandNode] = []
@@ -50,11 +58,14 @@ class SiemensFlowControlHandler(Handler):
                 self._labels[command[:-1].upper()] = node
 
         stack: list[NCCommandNode] = []
+        while_stack: list[NCCommandNode] = []
         while_stack_by_label: Dict[str, NCCommandNode] = {}
         if_stack: list[tuple[NCCommandNode, Optional[NCCommandNode]]] = []
         repeat_stack: list[NCCommandNode] = []
         for node in self._nodes:
             command = (node.loop_command or "").strip()
+            if not command:
+                continue
             upper = command.upper()
             if upper.startswith("FOR"):
                 stack.append(node)
@@ -63,19 +74,21 @@ class SiemensFlowControlHandler(Handler):
                 self._for_to_end[start] = node
                 self._end_to_for[node] = start
             elif upper.startswith("WHILE"):
-                label_match = re.search(r"DO(\d+)$", upper)
+                while_stack.append(node)
+                label_match = self._DO_LABEL_RE.search(upper)
                 if label_match:
                     while_stack_by_label[label_match.group(1)] = node
             elif upper.startswith("END") and upper not in {"ENDIF", "ENDFOR", "ENDWHILE"}:
                 label = upper[3:]
                 start = while_stack_by_label.pop(label, None)
                 if start is not None:
+                    if start in while_stack:
+                        while_stack.remove(start)
                     self._while_to_end[start] = node
                     self._end_to_while[node] = start
             elif upper == "ENDWHILE":
-                starts = list(while_stack_by_label.values())
-                if starts:
-                    start = starts[-1]
+                start = while_stack.pop() if while_stack else None
+                if start is not None:
                     self._while_to_end[start] = node
                     self._end_to_while[node] = start
             elif upper.startswith("IF") and "GOTO" not in upper:
@@ -97,11 +110,16 @@ class SiemensFlowControlHandler(Handler):
                 self._until_to_repeat[node] = start
 
     def handle(self, node: NCCommandNode, state: CNCState) -> Tuple[Optional[list], Optional[float]]:
-        scope = ensure_siemens_scope(state)
-        scope["labels"] = self._labels
         command = (node.loop_command or "").strip()
         if not command:
+            if self._labels:
+                scope = state.siemens_state.scope
+                if scope and scope.get("labels") is not self._labels:
+                    scope["labels"] = self._labels
             return super().handle(node, state)
+
+        scope = ensure_siemens_scope(state)
+        scope["labels"] = self._labels
 
         # Discard a jump left on this node by an earlier iteration before
         # evaluating the command against the current variable state.
@@ -132,7 +150,7 @@ class SiemensFlowControlHandler(Handler):
         return super().handle(node, state)
 
     def _handle_goto(self, node: NCCommandNode, command: str) -> None:
-        match = re.match(r"^(GOTOF|GOTOB|GOTOC|GOTO)(.+)$", command, re.IGNORECASE)
+        match = self._GOTO_RE.match(command)
         if not match:
             return
         mode = match.group(1).upper()
@@ -144,20 +162,21 @@ class SiemensFlowControlHandler(Handler):
             return
 
     def _handle_if(self, node: NCCommandNode, command: str, state: CNCState) -> None:
-        single_line = re.match(r"^IF(.+?)(GOTOF|GOTOB|GOTO)(.+)$", command, re.IGNORECASE)
-        if single_line:
-            condition, goto_mode, label = single_line.groups()
-            if self._evaluator.is_true(condition, state):
-                self._handle_goto(node, goto_mode + label)
-            return
-        condition = re.sub(r"^IF", "", command, count=1, flags=re.IGNORECASE)
+        if "GOTO" in command.upper():
+            single_line = self._IF_GOTO_RE.match(command)
+            if single_line:
+                condition, goto_mode, label = single_line.groups()
+                if self._evaluator.is_true(condition, state):
+                    self._handle_goto(node, goto_mode + label)
+                return
+        condition = self._IF_PREFIX_RE.sub("", command, count=1)
         if not self._evaluator.is_true(condition, state):
             target = self._if_to_else_or_end.get(node)
             if target is not None:
                 node._next_ncCode = getattr(target, "_next_ncCode", None) if (target.loop_command or "").upper() == "ELSE" else target
 
     def _handle_for(self, node: NCCommandNode, command: str, state: CNCState) -> None:
-        match = re.match(r"^FOR([A-Za-z_][A-Za-z0-9_]*)=(.+?)TO(.+)$", command, re.IGNORECASE)
+        match = self._FOR_RE.match(command)
         if not match:
             return
         variable_name, start_expr, end_expr = match.groups()
@@ -188,7 +207,7 @@ class SiemensFlowControlHandler(Handler):
             node._next_ncCode = self._default_next.get(node)
 
     def _handle_while(self, node: NCCommandNode, command: str, state: CNCState) -> None:
-        match = re.match(r"^WHILE(.+?)(?:DO\d+)?$", command, re.IGNORECASE)
+        match = self._WHILE_RE.match(command)
         if not match:
             return
         condition = match.group(1)
@@ -203,7 +222,7 @@ class SiemensFlowControlHandler(Handler):
             node._next_ncCode = start_node
 
     def _handle_until(self, node: NCCommandNode, command: str, state: CNCState) -> None:
-        match = re.match(r"^UNTIL\s+(.+)$", command, re.IGNORECASE)
+        match = self._UNTIL_RE.match(command)
         if not match:
             return
         condition = match.group(1).strip()

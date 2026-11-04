@@ -67,22 +67,34 @@ def project_mill_demo_poses(points: list[dict[str, float]], context: dict[str, A
     values = [start_axes["B"], start_axes["C"], end_axes["B"], end_axes["C"], *mounting]
     if any(type(value) not in (int, float) or not math.isfinite(value) for value in values):
         raise ToolPoseError("POSE_COORDINATES_UNRESOLVED: non-finite pose input")
+    b_start, b_end = float(start_axes["B"]), float(end_axes["B"])
+    c_start, c_end = float(start_axes["C"]), float(end_axes["C"])
     mount = _matrix_multiply(_rotation_z(mounting[2]), _matrix_multiply(_rotation_y(mounting[1]), _rotation_x(mounting[0])))
+    stationary = math.isclose(b_start, b_end, abs_tol=1e-12) and math.isclose(c_start, c_end, abs_tol=1e-12)
+    static_quaternion = (
+        _quaternion(_matrix_multiply(_rotation_z(-c_start), _matrix_multiply(_rotation_y(-b_start), mount)))
+        if stationary
+        else None
+    )
     poses, previous = [], None
+    n_minus_1 = len(points) - 1
     for index, point in enumerate(points):
-        coordinates = [point.get(axis) for axis in ("x", "y", "z")]
+        coordinates = [point.get("x"), point.get("y"), point.get("z")]
         if any(type(value) not in (int, float) or not math.isfinite(value) for value in coordinates):
             raise ToolPoseError("POSE_COORDINATES_UNRESOLVED: non-finite point")
-        progress = index / (len(points) - 1) if len(points) > 1 else 1
-        b = float(start_axes["B"]) + (float(end_axes["B"]) - float(start_axes["B"])) * progress
-        c = float(start_axes["C"]) + (float(end_axes["C"]) - float(start_axes["C"])) * progress
-        orientation = _matrix_multiply(_rotation_z(-c), _matrix_multiply(_rotation_y(-b), mount))
-        quaternion = _quaternion(orientation)
-        if previous is not None and sum(left * right for left, right in zip(previous, quaternion)) < 0:
-            quaternion = [-value for value in quaternion]
+        if static_quaternion is not None:
+            quaternion = list(static_quaternion)
+        else:
+            progress = index / n_minus_1 if n_minus_1 > 0 else 1
+            b = b_start + (b_end - b_start) * progress
+            c = c_start + (c_end - c_start) * progress
+            orientation = _matrix_multiply(_rotation_z(-c), _matrix_multiply(_rotation_y(-b), mount))
+            quaternion = _quaternion(orientation)
+            if previous is not None and sum(left * right for left, right in zip(previous, quaternion)) < 0:
+                quaternion = [-value for value in quaternion]
+            previous = quaternion
         poses.append({"position": coordinates, "orientation": quaternion,
                       "reference": "millingTip", "frameId": "workpiece:tableBC"})
-        previous = quaternion
     return poses
 
 
@@ -173,28 +185,46 @@ def project_fixed_target_poses(
     if any(type(value) not in (int, float) or not math.isfinite(value) for value in values):
         raise ToolPoseError("POSE_COORDINATES_UNRESOLVED: non-finite mounting orientation")
     tool_mount = _matrix_multiply(_rotation_z(mounting[2]), _matrix_multiply(_rotation_y(mounting[1]), _rotation_x(mounting[0])))
-    poses, previous = [], None
-    for index, point in enumerate(points):
-        coordinates = [point.get(axis) for axis in ("x", "y", "z")]
-        if any(type(value) not in (int, float) or not math.isfinite(value) for value in coordinates):
-            raise ToolPoseError("POSE_COORDINATES_UNRESOLVED: non-finite point")
-        progress = index / (len(points) - 1) if len(points) > 1 else 1
-        axes = {}
-        for axis in set(start_axes) | set(end_axes):
-            if axis in start_axes and axis in end_axes:
-                axes[axis] = float(start_axes[axis]) + (float(end_axes[axis]) - float(start_axes[axis])) * progress
-        tool_rotation = _carrier_rotation(tool_carrier, axes)
-        workpiece_rotation = _workpiece_rotation(workpiece_carrier, axes, context)
+    shared_axes = [
+        (axis, float(start_axes[axis]), float(end_axes[axis]) - float(start_axes[axis]))
+        for axis in (set(start_axes) & set(end_axes))
+    ]
+    stationary = all(math.isclose(delta, 0.0, abs_tol=1e-12) for _, _, delta in shared_axes)
+    static_quaternion = None
+    if stationary:
+        base_axes = {axis: start_val for axis, start_val, _ in shared_axes}
+        tool_rotation = _carrier_rotation(tool_carrier, base_axes)
+        workpiece_rotation = _workpiece_rotation(workpiece_carrier, base_axes, context)
         orientation = _matrix_multiply(
             [[workpiece_rotation[column][row] for column in range(3)] for row in range(3)],
             _matrix_multiply(tool_rotation, tool_mount),
         )
-        quaternion = _quaternion(orientation)
-        if previous is not None and sum(left * right for left, right in zip(previous, quaternion)) < 0:
-            quaternion = [-value for value in quaternion]
+        static_quaternion = _quaternion(orientation)
+
+    frame_id = f"workpiece:{workpiece_carrier['id']}"
+    poses, previous = [], None
+    n_minus_1 = len(points) - 1
+    for index, point in enumerate(points):
+        coordinates = [point.get("x"), point.get("y"), point.get("z")]
+        if any(type(value) not in (int, float) or not math.isfinite(value) for value in coordinates):
+            raise ToolPoseError("POSE_COORDINATES_UNRESOLVED: non-finite point")
+        if static_quaternion is not None:
+            quaternion = list(static_quaternion)
+        else:
+            progress = index / n_minus_1 if n_minus_1 > 0 else 1
+            axes = {axis: start_val + delta * progress for axis, start_val, delta in shared_axes}
+            tool_rotation = _carrier_rotation(tool_carrier, axes)
+            workpiece_rotation = _workpiece_rotation(workpiece_carrier, axes, context)
+            orientation = _matrix_multiply(
+                [[workpiece_rotation[column][row] for column in range(3)] for row in range(3)],
+                _matrix_multiply(tool_rotation, tool_mount),
+            )
+            quaternion = _quaternion(orientation)
+            if previous is not None and sum(left * right for left, right in zip(previous, quaternion)) < 0:
+                quaternion = [-value for value in quaternion]
+            previous = quaternion
         poses.append({"position": coordinates, "orientation": quaternion,
-                      "reference": reference, "frameId": f"workpiece:{workpiece_carrier['id']}"})
-        previous = quaternion
+                      "reference": reference, "frameId": frame_id})
     return poses
 
 

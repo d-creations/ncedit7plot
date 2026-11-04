@@ -10,6 +10,8 @@ from ncplot7py.interfaces.BaseNCProgramLexer import BaseNCProgramLexer, NCSource
 class FanucProgramLexer(BaseNCProgramLexer):
     """Handle nested parenthesis comments and legacy semicolon statements."""
 
+    _ALARM_3000_RE = re.compile(r"#\s*3000\s*=", re.IGNORECASE)
+
     def lex(self, program: str) -> List[NCSourceStatement]:
         if program is None:
             return []
@@ -23,12 +25,17 @@ class FanucProgramLexer(BaseNCProgramLexer):
         return statements
 
     def _lex_line(self, line: str, line_number: int) -> List[NCSourceStatement]:
+        if not line:
+            return [NCSourceStatement("", line_number, 1)]
+        if '"' not in line and '(' not in line and ')' not in line and ';' not in line:
+            return [NCSourceStatement(line, line_number, 1)]
+
         statements: List[NCSourceStatement] = []
         current: List[str] = []
         depth = 0
         in_string = False
         statement_column = 1
-        preserve_parentheses = re.search(r"#\s*3000\s*=", line, re.IGNORECASE) is not None
+        preserve_parentheses = "3000" in line and self._ALARM_3000_RE.search(line) is not None
 
         for index, character in enumerate(line):
             if character == '"' and depth == 0:

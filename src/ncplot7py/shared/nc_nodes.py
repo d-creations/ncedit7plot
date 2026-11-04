@@ -8,7 +8,7 @@ interop with linked-list implementations that expect those fields.
 from __future__ import annotations
 
 from copy import deepcopy
-from typing import Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 
 from ..interfaces.BaseNCCommandNode import BaseNCCommandNode
 
@@ -21,6 +21,25 @@ class NCCommandNode(BaseNCCommandNode):
     linked-list implementations that expect those attributes.
     """
 
+    __slots__ = (
+        "_g_code",
+        "_command_parameter",
+        "_loop_command",
+        "_variable_command",
+        "_dddp_command",
+        "_nc_code_line_nr",
+        "_motion_geometry",
+        "_motion_traversal",
+        "_motion_source_code",
+        "_generated_motion_segments",
+        "_execution_step",
+        "_tool_number",
+        "_motion_context",
+        "extra",
+        "_next_ncCode",
+        "_before_ncCode",
+    )
+
     def __init__(
         self,
         g_code_command: Optional[Set[str]] = None,
@@ -32,11 +51,11 @@ class NCCommandNode(BaseNCCommandNode):
     ) -> None:
         # store data in private attributes to avoid colliding with the
         # abstract-property names exposed by the interface
-        self._g_code: Set[str] = set(g_code_command or [])
-        self._command_parameter: Dict[str, str] = dict(command_parameter or {})
+        self._g_code: Set[str] = set(g_code_command) if g_code_command else set()
+        self._command_parameter: Dict[str, str] = dict(command_parameter) if command_parameter else {}
         self._loop_command = loop_command
         self._variable_command = variable_command
-        self._dddp_command: Set[str] = set(dddp_command or [])
+        self._dddp_command: Set[str] = set(dddp_command) if dddp_command else set()
         self._nc_code_line_nr: Optional[int] = nc_code_line_nr
         self._motion_geometry: Optional[str] = None
         self._motion_traversal: Optional[str] = None
@@ -102,7 +121,20 @@ class NCCommandNode(BaseNCCommandNode):
 
     @property
     def motion_context(self) -> Optional[Dict[str, object]]:
-        return deepcopy(self._motion_context)
+        return self._copy_motion_context(self._motion_context)
+
+    @staticmethod
+    def _copy_motion_context(ctx: Optional[Dict[str, object]]) -> Optional[Dict[str, object]]:
+        if ctx is None:
+            return None
+        copied: Dict[str, object] = dict(ctx)
+        if "startAxes" in copied and isinstance(copied["startAxes"], dict):
+            copied["startAxes"] = dict(copied["startAxes"])
+        if "endAxes" in copied and isinstance(copied["endAxes"], dict):
+            copied["endAxes"] = dict(copied["endAxes"])
+        if "toolOffset" in copied and isinstance(copied["toolOffset"], dict):
+            copied["toolOffset"] = dict(copied["toolOffset"])
+        return copied
 
     def set_motion_metadata(self, geometry: str, traversal: str, source_code: str) -> None:
         self._motion_geometry = geometry
@@ -120,7 +152,7 @@ class NCCommandNode(BaseNCCommandNode):
     ) -> None:
         self._execution_step = execution_step
         self._tool_number = tool_number
-        self._motion_context = deepcopy(motion_context) if motion_context is not None else None
+        self._motion_context = self._copy_motion_context(motion_context)
 
     def __str__(self) -> str:
         parts = ["NC COMMAND: "]
@@ -134,31 +166,33 @@ class NCCommandNode(BaseNCCommandNode):
             parts.append(f" line={self.nc_code_line_nr}")
         return "".join(parts)
 
-    def copy(self) -> "NCCommandNode":
-        """Return a deep copy of the node (pointers are not deeply copied).
+    def copy(self, include_segments: bool = True) -> "NCCommandNode":
+        """Return a copy of the node (pointers are not deeply copied).
 
         The original example copied next pointers shallowly; here we copy
-        node attributes deeply but keep `_next_ncCode` as a shallow reference
+        node attributes but keep `_next_ncCode` as a shallow reference
         to avoid copying an entire list structure.
         """
         node = NCCommandNode(
-            g_code_command=set(self.g_code),
-            command_parameter=deepcopy(self.command_parameter),
-            loop_command=self.loop_command,
-            variable_command=self.variable_command,
-            dddp_command=set(self.dddp_command),
-            nc_code_line_nr=self.nc_code_line_nr,
+            g_code_command=set(self._g_code) if self._g_code else None,
+            command_parameter=dict(self._command_parameter) if self._command_parameter else None,
+            loop_command=self._loop_command,
+            variable_command=self._variable_command,
+            dddp_command=set(self._dddp_command) if self._dddp_command else None,
+            nc_code_line_nr=self._nc_code_line_nr,
         )
         node._next_ncCode = self._next_ncCode
         node._before_ncCode = self._before_ncCode
         node._motion_geometry = self._motion_geometry
         node._motion_traversal = self._motion_traversal
         node._motion_source_code = self._motion_source_code
-        node._generated_motion_segments = deepcopy(self._generated_motion_segments)
+        if include_segments and self._generated_motion_segments:
+            node._generated_motion_segments = deepcopy(self._generated_motion_segments)
         node._execution_step = self._execution_step
         node._tool_number = self._tool_number
-        node._motion_context = deepcopy(self._motion_context)
-        node.extra = deepcopy(getattr(self, "extra", {}))
+        node._motion_context = self._copy_motion_context(self._motion_context)
+        if self.extra:
+            node.extra = deepcopy(self.extra)
         return node
 
     def __del__(self) -> None:

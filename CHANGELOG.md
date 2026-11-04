@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.2] - 2026-11-04
+
+### Added
+- Added `G162` (CW) and `G163` (CCW) circular step cycle support with `R` radius validation and arc interpolation in `StarG161StepCycleHandler`.
+- Added shared SR-20R IV Type B simulation kinematics, axis bindings, and `axis_binding` handler support to generic STAR profiles (`FANUC_STAR_x-D_y-R_z_R` and `FANUC_STAR_x-D_y-D_z_R`) while preserving per-profile diameter axis settings.
+
+### Changed
+- Optimized `Point` (`@dataclass(slots=True)`) and `NCCommandNode` (`__slots__`, targeted shallow copies, and `include_segments=False` when splitting generated cycle segments) to reduce memory and `deepcopy` overhead.
+- Pre-compiled regex patterns and added fast-path checks across `FanucProgramLexer`, `NCCommandStringParser`, `FanucCommandParser`, and `SiemensCommandParser`.
+- Optimized linear and circular interpolation, stationary rotary-axis transforms, and pose quaternion caching across `MotionHandler`, `SiemensMotionHandler`, `tool_pose.py`, and `NCExecutionEngine`.
+- Added plain-float literal fast paths, `@lru_cache` AST bytecode caching, and lazy variable evaluation contexts in `ExpressionEvaluator`, `VariableHandler`, `SiemensExpressionEvaluator`, and `SiemensVariableHandler`.
+- Pre-tokenized loop commands and pre-compiled control-flow patterns in `ControlFlowHandler` and `SiemensFlowControlHandler`.
+- Enhanced `FanucCorneringHandler` look-ahead for chamfering (`C`, `,C`, `I`, `K`), corner rounding (`R`, `,R`), and DDDP angle (`A`, `,A`) moves to support modal `G01` blocks, incremental words (`U`, `V`, `W`, `H`), and diameter-mode axis scaling.
+
+### Fixed
+- Fixed `ControlFlowHandler._is_true` so the `NE` (not-equal) comparison operator is reachable in Fanuc `IF` and `WHILE` conditions.
+- Fixed `SiemensFlowControlHandler.setup_maps` stack pairing for unlabeled and nested `WHILE ... ENDWHILE` blocks.
+
+---
+
 ## [0.4.1] - 2026-10-31
 
 ### Fixed

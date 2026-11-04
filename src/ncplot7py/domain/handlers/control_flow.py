@@ -11,6 +11,7 @@ linked via `_next_ncCode` and `_before_ncCode` beforehand.
 """
 from __future__ import annotations
 
+from functools import lru_cache
 import re
 from typing import Optional, Tuple
 import logging
@@ -21,8 +22,28 @@ from ncplot7py.domain.cnc_state import CNCState
 from ncplot7py.domain.expression_evaluator import ExpressionEvaluator
 
 
+@lru_cache(maxsize=512)
+def _parse_fanuc_condition(cond_text: str) -> Optional[Tuple[str, str, str]]:
+    text = cond_text.strip()
+    if text.startswith("[") and text.endswith("]"):
+        text = text[1:-1]
+    for op in ("GE", "LE", "GT", "LT", "EQ", "NE"):
+        if op in text:
+            left, right = text.split(op, 1)
+            return op, left, right
+    return None
+
+
+@lru_cache(maxsize=512)
+def _tokenize_loop_command(lc: str) -> Tuple[str, ...]:
+    command = ControlFlowHandler.TOKEN_RE.sub(r" \1", lc)
+    return tuple(t for t in command.split(" ") if t)
+
+
 class ControlFlowHandler(Handler):
     TOKEN_RE = re.compile(r"(GOTO|THEN|IF|END|DO|WHILE)")
+    _DO_RE = re.compile(r"DO(\d+)")
+    _END_RE = re.compile(r"END(\d+)")
 
     def __init__(self, next_handler: Optional[Handler] = None):
         super().__init__(next_handler=next_handler)
@@ -36,6 +57,7 @@ class ControlFlowHandler(Handler):
         self._default_next = {}
         self._do_to_end = {}
         self._end_to_do = {}
+        self._while_cond_by_do = {}
         self._loop_counters = {}
 
     def setup_maps(self, nodes: list[NCCommandNode]) -> None:
@@ -51,6 +73,7 @@ class ControlFlowHandler(Handler):
         }
         self._do_to_end = {}
         self._end_to_do = {}
+        self._while_cond_by_do = {}
         self._loop_counters = {}
         open_do = {}
 
@@ -68,10 +91,15 @@ class ControlFlowHandler(Handler):
             # detect DO/END labels inside loop_command
             lc = getattr(nd, "loop_command", None)
             if lc:
-                for m in re.findall(r"DO(\d+)", lc):
+                if "WHILE" in lc:
+                    for t in _tokenize_loop_command(lc):
+                        if t.startswith("WHILE"):
+                            self._while_cond_by_do[nd] = t[5:]
+                            break
+                for m in self._DO_RE.findall(lc):
                     self._do_map.setdefault(m, []).append(nd)
                     open_do.setdefault(m, []).append(nd)
-                for m in re.findall(r"END(\d+)", lc):
+                for m in self._END_RE.findall(lc):
                     self._end_map.setdefault(m, []).append(nd)
                     starts = open_do.get(m)
                     if starts:
@@ -138,59 +166,37 @@ class ControlFlowHandler(Handler):
         return None
 
     def _is_true(self, cond_text: str, state: CNCState) -> bool:
-        logger = logging.getLogger(__name__)
-        # strip surrounding brackets which may come from parsed tokens
+        parsed = _parse_fanuc_condition(str(cond_text or ""))
+        if parsed is None:
+            return False
+        op, left, right = parsed
         try:
-            cond_text = cond_text.strip()
-            if cond_text.startswith("[") and cond_text.endswith("]"):
-                cond_text = cond_text[1:-1]
+            lv = self._eval_helper.evaluate(left, state)
+            rv = self._eval_helper.evaluate(right, state)
         except Exception:
-            pass
-        # detect operators GT, LT, GE, LE, EQ
-        for op in ("GE", "LE", "GT", "LT", "EQ"):
-            if op in cond_text:
-                left, right = cond_text.split(op, 1)
-                try:
-                    lv = self._eval_helper.evaluate(left, state)
-                    rv = self._eval_helper.evaluate(right, state)
-                except Exception:
-                    logger.debug("_is_true failed eval for cond=%s left=%s right=%s", cond_text, left, right, exc_info=True)
-                    try:
-                        logger.debug("_is_true state.parameters snapshot: %s", getattr(state, 'parameters', None))
-                    except Exception:
-                        pass
-                    return False
-                try:
-                    vf_lv = float(lv) if lv not in ("", None) else 0.0
-                    vf_rv = float(rv) if rv not in ("", None) else 0.0
-                except ValueError:
-                    vf_lv = 0.0
-                    vf_rv = 0.0
+            logger = logging.getLogger(__name__)
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug("_is_true failed eval for cond=%s left=%s right=%s", cond_text, left, right, exc_info=True)
+            return False
+        try:
+            vf_lv = float(lv) if lv not in ("", None) else 0.0
+            vf_rv = float(rv) if rv not in ("", None) else 0.0
+        except ValueError:
+            vf_lv = 0.0
+            vf_rv = 0.0
 
-                if op == "GT":
-                    result = vf_lv > vf_rv
-                    logger.debug("_is_true: %s GT %s -> %s", lv, rv, result)
-                    return result
-                if op == "LT":
-                    result = vf_lv < vf_rv
-                    logger.debug("_is_true: %s LT %s -> %s", lv, rv, result)
-                    return result
-                if op == "GE":
-                    result = vf_lv >= vf_rv
-                    logger.debug("_is_true: %s GE %s -> %s", lv, rv, result)
-                    return result
-                if op == "LE":
-                    result = vf_lv <= vf_rv
-                    logger.debug("_is_true: %s LE %s -> %s", lv, rv, result)
-                    return result
-                if op == "EQ":
-                    result = vf_lv == vf_rv
-                    logger.debug("_is_true: %s EQ %s -> %s", lv, rv, result)
-                    return result
-                if op == "NE":
-                    result = vf_lv != vf_rv
-                    logger.debug("_is_true: %s NE %s -> %s", lv, rv, result)
-                    return result
+        if op == "GT":
+            return vf_lv > vf_rv
+        if op == "LT":
+            return vf_lv < vf_rv
+        if op == "GE":
+            return vf_lv >= vf_rv
+        if op == "LE":
+            return vf_lv <= vf_rv
+        if op == "EQ":
+            return vf_lv == vf_rv
+        if op == "NE":
+            return vf_lv != vf_rv
         return False
 
     def handle(self, node: NCCommandNode, state: CNCState) -> Tuple[Optional[list], Optional[float]]:
@@ -203,9 +209,7 @@ class ControlFlowHandler(Handler):
         if node in self._default_next:
             node._next_ncCode = self._default_next[node]
 
-        # Insert spaces before tokens to help splitting (parser removed spaces)
-        command = re.sub(self.TOKEN_RE, r" \1", lc)
-        tokens = [t for t in command.split(" ") if t]
+        tokens = _tokenize_loop_command(lc)
 
         # simple scan for IF...GOTO or plain GOTO
         for token in tokens:
@@ -215,7 +219,7 @@ class ControlFlowHandler(Handler):
                     # find GOTO token in same command
                     for t2 in tokens:
                         if t2.startswith("GOTO"):
-                            pos = t2.split("GOTO", 1)[1]
+                            pos = t2[4:]
                             target = self._find_node_with_N(node, pos)
                             if target is None:
                                 # nothing we can do; fallthrough
@@ -228,16 +232,16 @@ class ControlFlowHandler(Handler):
                 # whether true or false, stop processing IF
                 break
             elif token.startswith("GOTO"):
-                pos = token.split("GOTO", 1)[1]
+                pos = token[4:]
                 # GOTO may reference a DO-label or an N label
                 target = None
                 try:
                     key = float(pos)
                 except Exception:
                     key = None
-                if key is not None and getattr(self, "_n_map", None) is not None:
+                if key is not None and self._n_map is not None:
                     target = self._n_map.get(key)
-                if target is None and getattr(self, "_do_map", None) is not None:
+                if target is None and self._do_map is not None:
                     # do_map entries are lists; pick first
                     lst = self._do_map.get(pos)
                     if lst:
@@ -254,7 +258,7 @@ class ControlFlowHandler(Handler):
                     # find DO token to get pos
                     for t2 in tokens:
                         if t2.startswith("DO"):
-                            pos = t2.split("DO", 1)[1]
+                            pos = t2[2:]
                             end_node = self._find_end_for_do(node, pos)
                             if end_node is not None:
                                 node._next_ncCode = getattr(end_node, "_next_ncCode", None)
@@ -289,8 +293,8 @@ class ControlFlowHandler(Handler):
                     # fallback: search backward for a DO with same label
                     cur = getattr(node, "_before_ncCode", None)
                     while cur is not None:
-                        lc = cur.loop_command
-                        if lc and f"DO{label}" in lc:
+                        cur_lc = cur.loop_command
+                        if cur_lc and f"DO{label}" in cur_lc:
                             do_node = cur
                             break
                         cur = getattr(cur, "_before_ncCode", None)
@@ -309,30 +313,27 @@ class ControlFlowHandler(Handler):
                         # If this DO was actually a WHILE (e.g. "WHILE[...]DO<label>"),
                         # re-evaluate the condition here and jump back to the DO body
                         # if the condition still holds.
-                        try:
-                            lc = do_node.loop_command
-                        except Exception:
-                            lc = None
-                        if lc and "WHILE" in lc:
-                            # extract WHILE token and condition similar to above
-                            command2 = re.sub(self.TOKEN_RE, r" \1", lc)
-                            tokens2 = [t for t in command2.split(" ") if t]
-                            for t3 in tokens2:
-                                if t3.startswith("WHILE"):
-                                    cond_text = t3[5:]
-                                    try:
-                                        if self._is_true(cond_text, state):
-                                            # condition still true -> jump back into loop body
-                                            node._next_ncCode = getattr(do_node, "_next_ncCode", do_node)
-                                        else:
-                                            # condition false -> ensure END falls through to next node
-                                            node._next_ncCode = self._default_next.get(
-                                                node, getattr(node, "_next_ncCode", None)
-                                            )
-                                    except Exception:
-                                        # on error, fall through
-                                        pass
-                                    break
+                        cond_text = self._while_cond_by_do.get(do_node)
+                        if cond_text is None:
+                            do_lc = getattr(do_node, "loop_command", None)
+                            if do_lc and "WHILE" in do_lc:
+                                for t3 in _tokenize_loop_command(do_lc):
+                                    if t3.startswith("WHILE"):
+                                        cond_text = t3[5:]
+                                        self._while_cond_by_do[do_node] = cond_text
+                                        break
+                        if cond_text is not None:
+                            try:
+                                if self._is_true(cond_text, state):
+                                    # condition still true -> jump back into loop body
+                                    node._next_ncCode = getattr(do_node, "_next_ncCode", do_node)
+                                else:
+                                    # condition false -> ensure END falls through to next node
+                                    node._next_ncCode = self._default_next.get(
+                                        node, getattr(node, "_next_ncCode", None)
+                                    )
+                            except Exception:
+                                pass
                 break
 
         return super().handle(node, state)

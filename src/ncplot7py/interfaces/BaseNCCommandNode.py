@@ -18,6 +18,8 @@ class BaseNCCommandNode(ABC):
     plain attributes or @property implementations.
     """
 
+    __slots__ = ()
+
     @property
     @abstractmethod
     def g_code(self) -> Set[str]:

@@ -64,6 +64,24 @@ class TestControlFlowMore(unittest.TestCase):
         self.assertTrue(len(tp) >= 6)
         self.assertAlmostEqual(state.get_axis("X"), 5.0)
 
+    def test_if_and_while_with_ne_operator(self):
+        state = CNCState()
+        state.feed_rate = 60.0
+        canal = UniversalConfigDrivenCanal("C1", init_state=state)
+
+        node_init = NCCommandNode(variable_command="#100=0", nc_code_line_nr=1)
+        node_while = NCCommandNode(loop_command="WHILE[#100NE3]DO1", nc_code_line_nr=2)
+        node_inc = NCCommandNode(variable_command="#100=#100+1", nc_code_line_nr=3)
+        node_if = NCCommandNode(loop_command="IF[#100NE3]GOTO10", nc_code_line_nr=4)
+        node_move = NCCommandNode(g_code_command={"G01"}, command_parameter={"X": "12", "F": "60"}, nc_code_line_nr=5)
+        node_end = NCCommandNode(command_parameter={"N": "10"}, loop_command="END1", nc_code_line_nr=6)
+
+        canal.run_nc_code_list([node_init, node_while, node_inc, node_if, node_move, node_end])
+
+        self.assertAlmostEqual(float(state.parameters["100"]), 3.0)
+        self.assertEqual(len(canal.get_tool_path()), 1)
+        self.assertAlmostEqual(state.get_axis("X"), 12.0)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -27,6 +27,20 @@ class MotionHandler(Handler):
     delegates to next handler.
     """
 
+    _INTERP_MODE_MAP = {
+        "G00": "G00",
+        "G0": "G00",
+        "G01": "G01",
+        "G1": "G01",
+        "G02": "G02",
+        "G2": "G02",
+        "G03": "G03",
+        "G3": "G03",
+    }
+    _BASE_MOTION_AXES = frozenset({"X", "Y", "Z", "A", "B", "C", "U", "V", "W", "H"})
+    _GEOMETRY_AXES = frozenset({"X", "Y", "Z", "A", "B", "C"})
+    _INCREMENTAL_MAP = {"U": "X", "V": "Y", "W": "Z", "H": "C"}
+
     def __init__(self, next_handler: Optional[Handler] = None, max_segment: float = 0.5):
         super().__init__(next_handler=next_handler)
         self.max_segment = float(max_segment)
@@ -34,17 +48,7 @@ class MotionHandler(Handler):
     def _normalize_interp_mode(self, code: Optional[str]) -> Optional[str]:
         if not code:
             return None
-
-        normalized = str(code).strip().upper()
-        if normalized in ("G00", "G0"):
-            return "G00"
-        if normalized in ("G01", "G1"):
-            return "G01"
-        if normalized in ("G02", "G2"):
-            return "G02"
-        if normalized in ("G03", "G3"):
-            return "G03"
-        return None
+        return self._INTERP_MODE_MAP.get(str(code).strip().upper())
 
     @staticmethod
     def _physical_axis(state: CNCState, axis: str) -> str:
@@ -61,36 +65,39 @@ class MotionHandler(Handler):
         # detect motion codes
         interp_mode = None  # 'G00','G01','G02','G03'
         for g in node.g_code:
-            interp_mode = self._normalize_interp_mode(g) or interp_mode
+            mode = self._normalize_interp_mode(g)
+            if mode is not None:
+                interp_mode = mode
+
+        cmd_params = node.command_parameter
+        if interp_mode is None and not cmd_params:
+            return super().handle(node, state)
 
         configured_axes = {str(axis).upper() for axis in getattr(state.machine_config, "axes", ())}
-        motion_axes = {"X", "Y", "Z", "A", "B", "C", "U", "V", "W", "H"} | configured_axes
         seventh_axis_name = self._get_seventh_axis_name(state)
         seventh_axis_maps_to = self._get_seventh_axis_maps_to(state)
-        if seventh_axis_name:
-            motion_axes.add(seventh_axis_name)
-        has_motion_words = any(str(key).upper() in motion_axes for key in node.command_parameter)
-
-        if interp_mode is None and has_motion_words:
-            interp_mode = self._normalize_interp_mode(state.get_modal("G_GROUP_1"))
 
         if interp_mode is None:
-            return super().handle(node, state)
+            motion_axes = self._BASE_MOTION_AXES | configured_axes
+            if seventh_axis_name:
+                motion_axes = motion_axes | {seventh_axis_name}
+            has_motion_words = any(str(key).upper() in motion_axes for key in cmd_params)
+            if has_motion_words:
+                interp_mode = self._normalize_interp_mode(state.get_modal("G_GROUP_1"))
+            if interp_mode is None:
+                return super().handle(node, state)
 
         # Resolve start and end positions using state.resolve_target
         start = state.axes.copy()
         # Build absolute-axis targets separately from always-incremental axes.
         absolute_target_spec: Dict[str, float] = {}
         incremental_target_spec: Dict[str, float] = {}
-        absolute_mode = True
-        # check distance mode modal (G90/G91)
         dm = state.get_modal("distance")
-        if dm and dm.upper() == "G91":
-            absolute_mode = False
+        absolute_mode = not (dm and dm.upper() == "G91")
 
-        for k, v in node.command_parameter.items():
+        for k, v in cmd_params.items():
             key = k.upper()
-            if key in ("X", "Y", "Z", "A", "B", "C"):
+            if key in self._GEOMETRY_AXES:
                 absolute_target_spec[self._physical_axis(state, key)] = _to_float(v)
             elif key in configured_axes:
                 absolute_target_spec[key] = _to_float(v)
@@ -99,10 +106,9 @@ class MotionHandler(Handler):
                 absolute_target_spec[key] = value
                 if seventh_axis_maps_to and seventh_axis_maps_to not in absolute_target_spec:
                     absolute_target_spec[seventh_axis_maps_to] = value
-            elif key in ("U", "V", "W", "H"):
+            elif key in self._INCREMENTAL_MAP:
                 # UVW are incremental XYZ moves and H is an incremental C move.
-                mapped = {"U": "X", "V": "Y", "W": "Z", "H": "C"}[key]
-                mapped = self._physical_axis(state, mapped)
+                mapped = self._physical_axis(state, self._INCREMENTAL_MAP[key])
                 incremental_target_spec[mapped] = incremental_target_spec.get(mapped, 0.0) + _to_float(v)
             # I,J,K,R,F handled later
             # I,J,K,R,F handled later
@@ -184,15 +190,11 @@ class MotionHandler(Handler):
         # determine number of segments. Allow an optional per-state override
         # so callers/tests can request higher resolution by setting
         # `state.extra['max_segment']` to a smaller value (e.g. 0.05).
-        try:
-            channel_state = getattr(state, "channel_state", None)
-            max_seg = channel_state.max_segment if channel_state is not None and channel_state.max_segment is not None else getattr(state, "extra", {}).get("max_segment", self.max_segment)
-            eff_max_segment = float(max_seg or self.max_segment)
-        except Exception:
-            eff_max_segment = float(self.max_segment)
-        # ensure sane lower bound
+        channel_state = getattr(state, "channel_state", None)
+        max_seg = channel_state.max_segment if channel_state is not None else getattr(state, "extra", {}).get("max_segment")
+        eff_max_segment = float(max_seg) if max_seg else self.max_segment
         if eff_max_segment <= 0.0:
-            eff_max_segment = float(self.max_segment)
+            eff_max_segment = self.max_segment
         n = max(1, int(math.ceil(dist / eff_max_segment)))
         if rapid:
             rapid_mm_s = self._get_rapid_mm_s(state)
@@ -200,20 +202,35 @@ class MotionHandler(Handler):
         else:
             duration = self._get_feed_duration(dist, state, start, end)
 
-        points: List[Point] = []
+        sx = start.get("X", 0.0)
+        sy = start.get("Y", 0.0)
+        sz = start.get("Z", 0.0)
+        sa = start.get("A", 0.0)
+        sb = start.get("B", 0.0)
+        sc = start.get("C", 0.0)
+        dx = end.get("X", sx) - sx
+        dy = end.get("Y", sy) - sy
+        dz = end.get("Z", sz) - sz
+        da = end.get("A", sa) - sa
+        db = end.get("B", sb) - sb
+        dc = end.get("C", sc) - sc
+        inv_n = 1.0 / n
+
         # include explicit start point so joins between segments preserve
         # exact continuity when plotting consecutive motions
-        points.append(Point(x=start.get("X", 0.0), y=start.get("Y", 0.0), z=start.get("Z", 0.0),
-                             a=start.get("A", 0.0), b=start.get("B", 0.0), c=start.get("C", 0.0)))
+        points: List[Point] = [Point(x=sx, y=sy, z=sz, a=sa, b=sb, c=sc)]
         for i in range(1, n + 1):
-            t = i / n
-            x = start.get("X", 0.0) + (end.get("X", start.get("X", 0.0)) - start.get("X", 0.0)) * t
-            y = start.get("Y", 0.0) + (end.get("Y", start.get("Y", 0.0)) - start.get("Y", 0.0)) * t
-            z = start.get("Z", 0.0) + (end.get("Z", start.get("Z", 0.0)) - start.get("Z", 0.0)) * t
-            a = start.get("A", 0.0) + (end.get("A", start.get("A", 0.0)) - start.get("A", 0.0)) * t
-            b = start.get("B", 0.0) + (end.get("B", start.get("B", 0.0)) - start.get("B", 0.0)) * t
-            c = start.get("C", 0.0) + (end.get("C", start.get("C", 0.0)) - start.get("C", 0.0)) * t
-            points.append(Point(x=x, y=y, z=z, a=a, b=b, c=c))
+            t = i * inv_n
+            points.append(
+                Point(
+                    x=sx + dx * t,
+                    y=sy + dy * t,
+                    z=sz + dz * t,
+                    a=sa + da * t,
+                    b=sb + db * t,
+                    c=sc + dc * t,
+                )
+            )
         return points, duration
 
     def _get_active_plane(self, state: CNCState) -> str:
@@ -348,24 +365,18 @@ class MotionHandler(Handler):
         rotary_dist = self._estimate_rotary_axes_travel(start, end, state)
         motion_length = math.hypot(arc_length, rotary_dist)
         # n segments — allow per-state override like in linear interpolation
-        try:
-            channel_state = getattr(state, "channel_state", None)
-            max_seg = channel_state.max_segment if channel_state is not None and channel_state.max_segment is not None else getattr(state, "extra", {}).get("max_segment", self.max_segment)
-            eff_max_segment = float(max_seg or self.max_segment)
-        except Exception:
-            eff_max_segment = float(self.max_segment)
+        channel_state = getattr(state, "channel_state", None)
+        max_seg = channel_state.max_segment if channel_state is not None else getattr(state, "extra", {}).get("max_segment")
+        eff_max_segment = float(max_seg) if max_seg else self.max_segment
         if eff_max_segment <= 0.0:
-            eff_max_segment = float(self.max_segment)
+            eff_max_segment = self.max_segment
         n = max(2, int(math.ceil(max(motion_length, arc_length) / eff_max_segment)))
         # Ensure a minimum angular resolution so small-radius arcs don't
         # look like corners. Allow callers to override desired degrees per
         # segment via state.extra['angle_per_segment_deg'] (smaller -> more
         # segments). Default to 10 degrees per segment.
-        try:
-            deg_override = channel_state.angle_per_segment_deg if channel_state is not None and channel_state.angle_per_segment_deg is not None else getattr(state, "extra", {}).get("angle_per_segment_deg", 10.0)
-            desired_deg = float(deg_override or 10.0)
-        except Exception:
-            desired_deg = 2.0
+        deg_override = channel_state.angle_per_segment_deg if channel_state is not None else getattr(state, "extra", {}).get("angle_per_segment_deg")
+        desired_deg = float(deg_override) if deg_override else 10.0
         if desired_deg <= 0.0:
             desired_deg = 2.0
         min_n_by_angle = max(2, int(math.ceil(abs(da) / math.radians(desired_deg))))
@@ -375,27 +386,78 @@ class MotionHandler(Handler):
         # duration using feed rate (see linear routine for comments)
         duration = self._get_feed_duration(motion_length, state, start, end)
 
-        points: List[Point] = []
-        points.append(Point(x=start.get("X", 0.0), y=start.get("Y", 0.0), z=start.get("Z", 0.0),
-                             a=start.get("A", 0.0), b=start.get("B", 0.0), c=start.get("C", 0.0)))
-        for i in range(1, n + 1):
-            t = i / n
-            theta = a0 + da * t
-            point_by_axis = {
-                ordered_axes[0]: center_u + math.cos(theta) * radius,
-                ordered_axes[1]: center_v + math.sin(theta) * radius,
-            }
-            x = point_by_axis.get("X", start.get("X", 0.0) + (end.get("X", start.get("X", 0.0)) - start.get("X", 0.0)) * t)
-            y = point_by_axis.get("Y", start.get("Y", 0.0) + (end.get("Y", start.get("Y", 0.0)) - start.get("Y", 0.0)) * t)
-            z = point_by_axis.get("Z", start.get("Z", 0.0) + (end.get("Z", start.get("Z", 0.0)) - start.get("Z", 0.0)) * t)
-            a = start.get("A", 0.0) + (end.get("A", start.get("A", 0.0)) - start.get("A", 0.0)) * t
-            b = start.get("B", 0.0) + (end.get("B", start.get("B", 0.0)) - start.get("B", 0.0)) * t
-            c = start.get("C", 0.0) + (end.get("C", start.get("C", 0.0)) - start.get("C", 0.0)) * t
-            points.append(Point(x=x, y=y, z=z, a=a, b=b, c=c))
+        sx = start.get("X", 0.0)
+        sy = start.get("Y", 0.0)
+        sz = start.get("Z", 0.0)
+        sa = start.get("A", 0.0)
+        sb = start.get("B", 0.0)
+        sc = start.get("C", 0.0)
+        dx = end.get("X", sx) - sx
+        dy = end.get("Y", sy) - sy
+        dz = end.get("Z", sz) - sz
+        da_rot = end.get("A", sa) - sa
+        db_rot = end.get("B", sb) - sb
+        dc_rot = end.get("C", sc) - sc
+        inv_n = 1.0 / n
+        u_axis, v_axis = ordered_axes
+
+        points: List[Point] = [Point(x=sx, y=sy, z=sz, a=sa, b=sb, c=sc)]
+        if u_axis == "X" and v_axis == "Y":
+            for i in range(1, n + 1):
+                t = i * inv_n
+                theta = a0 + da * t
+                points.append(
+                    Point(
+                        x=center_u + math.cos(theta) * radius,
+                        y=center_v + math.sin(theta) * radius,
+                        z=sz + dz * t,
+                        a=sa + da_rot * t,
+                        b=sb + db_rot * t,
+                        c=sc + dc_rot * t,
+                    )
+                )
+        elif u_axis == "Z" and v_axis == "X":
+            for i in range(1, n + 1):
+                t = i * inv_n
+                theta = a0 + da * t
+                points.append(
+                    Point(
+                        x=center_v + math.sin(theta) * radius,
+                        y=sy + dy * t,
+                        z=center_u + math.cos(theta) * radius,
+                        a=sa + da_rot * t,
+                        b=sb + db_rot * t,
+                        c=sc + dc_rot * t,
+                    )
+                )
+        else:
+            for i in range(1, n + 1):
+                t = i * inv_n
+                theta = a0 + da * t
+                points.append(
+                    Point(
+                        x=sx + dx * t,
+                        y=center_u + math.cos(theta) * radius,
+                        z=center_v + math.sin(theta) * radius,
+                        a=sa + da_rot * t,
+                        b=sb + db_rot * t,
+                        c=sc + dc_rot * t,
+                    )
+                )
 
         return points, duration
 
     def _estimate_rotary_axes_travel(self, start: Dict[str, float], end: Dict[str, float], state: CNCState) -> float:
+        # Fast path when rotary axes are unchanged
+        if (
+            start.get("A", 0.0) == end.get("A", 0.0)
+            and start.get("B", 0.0) == end.get("B", 0.0)
+            and start.get("C", 0.0) == end.get("C", 0.0)
+        ):
+            planes = getattr(getattr(state, "machine_config", None), "rotary_axis_planes", None)
+            if not isinstance(planes, dict) or all(k in ("A", "B", "C") for k in planes):
+                return 0.0
+
         travel_squared = 0.0
         for axis, plane in self._get_rotary_axis_planes(state).items():
             start_angle = start.get(axis, 0.0)
@@ -411,22 +473,55 @@ class MotionHandler(Handler):
         return math.sqrt(travel_squared)
 
     def _transform_points_for_plot(self, points: List[Point], state: CNCState) -> List[Point]:
+        if not points:
+            return points
+        rotary_planes = self._get_rotary_axis_planes(state)
+        first_pt = points[0]
+        last_pt = points[-1]
+
+        active_rotations: List[Tuple[str, str, bool, float, float]] = []
+        for axis, plane in rotary_planes.items():
+            attr = axis.lower()
+            a0 = getattr(first_pt, attr, 0.0)
+            a1 = getattr(last_pt, attr, 0.0)
+            if math.isclose(a0, 0.0, abs_tol=1e-12) and math.isclose(a1, 0.0, abs_tol=1e-12):
+                continue
+            is_const = math.isclose(a0, a1, abs_tol=1e-12)
+            if is_const:
+                angle_rad = math.radians(a0)
+                active_rotations.append((attr, plane, True, math.cos(angle_rad), math.sin(angle_rad)))
+            else:
+                active_rotations.append((attr, plane, False, 0.0, 0.0))
+
+        if not active_rotations:
+            return points
+
         center_x, center_y, center_z = self._get_rotary_center(state)
         transformed: List[Point] = []
         for point in points:
             plot_x, plot_y, plot_z = point.x, point.y, point.z
-            for axis, plane in self._get_rotary_axis_planes(state).items():
-                angle = getattr(point, axis.lower(), 0.0)
-                plot_x, plot_y, plot_z = self._rotate_point_in_plane(
-                    plot_x,
-                    plot_y,
-                    plot_z,
-                    center_x,
-                    center_y,
-                    center_z,
-                    plane,
-                    angle,
-                )
+            for attr, plane, is_const, pre_cos, pre_sin in active_rotations:
+                if is_const:
+                    cos_a, sin_a = pre_cos, pre_sin
+                else:
+                    angle = getattr(point, attr, 0.0)
+                    if math.isclose(angle, 0.0, abs_tol=1e-12):
+                        continue
+                    angle_rad = math.radians(angle)
+                    cos_a = math.cos(angle_rad)
+                    sin_a = math.sin(angle_rad)
+                rel_x = plot_x - center_x
+                rel_y = plot_y - center_y
+                rel_z = plot_z - center_z
+                if plane == "YZ":
+                    plot_y = center_y + rel_y * cos_a - rel_z * sin_a
+                    plot_z = center_z + rel_y * sin_a + rel_z * cos_a
+                elif plane == "XZ":
+                    plot_x = center_x + rel_x * cos_a - rel_z * sin_a
+                    plot_z = center_z + rel_x * sin_a + rel_z * cos_a
+                else:
+                    plot_x = center_x + rel_x * cos_a - rel_y * sin_a
+                    plot_y = center_y + rel_x * sin_a + rel_y * cos_a
             transformed.append(Point(x=plot_x, y=plot_y, z=plot_z, a=point.a, b=point.b, c=point.c))
         return transformed
 

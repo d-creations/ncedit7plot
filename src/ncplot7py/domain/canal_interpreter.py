@@ -196,18 +196,18 @@ class CanalProgramInterpreter:
 
         steps = 0
         logger = logging.getLogger(__name__)
+        debug_enabled = logger.isEnabledFor(logging.DEBUG)
+        configured_axes = getattr(state.machine_config, "axes", ()) if getattr(state, "machine_config", None) else ()
 
         while node is not None and steps < max_steps:
-            try:
-                exec_sequence.append(node)
-            except Exception:
-                pass
+            exec_sequence.append(node)
 
             pts, dur = None, 0.0
+            state_axes = state.axes
             start_axes = {
-                axis: float(state.axes[axis])
-                for axis in getattr(state.machine_config, "axes", ())
-                if axis in state.axes
+                axis: float(state_axes[axis])
+                for axis in configured_axes
+                if axis in state_axes
             }
             if chain is not None:
                 try:
@@ -233,7 +233,7 @@ class CanalProgramInterpreter:
                         line=getattr(node, "nc_code_line_nr", 0) or 0,
                     )
 
-            if logger.isEnabledFor(logging.DEBUG):
+            if debug_enabled:
                 try:
                     ln = getattr(node, "nc_code_line_nr", None)
                     g = getattr(node, "g_code", None)
@@ -245,7 +245,8 @@ class CanalProgramInterpreter:
                 self._tool_path_compensator.reset()
 
             if pts is not None:
-                motion_node = node.copy()
+                generated_segments = node._generated_motion_segments
+                motion_node = node.copy(include_segments=False)
                 active_tool = state.tool_state.active_tool_number
                 if active_tool is None:
                     active_tool = state.tool_state.active_tool_name
@@ -254,19 +255,17 @@ class CanalProgramInterpreter:
                     tool_number=active_tool if active_tool is not None else "unknown",
                     motion_context=self.capture_motion_context(channel_name, state, start_axes),
                 )
-                generated_segments = getattr(node, "generated_motion_segments", [])
                 if generated_segments:
                     for segment in generated_segments:
                         segment_points = segment.get("points")
                         if not isinstance(segment_points, list) or not segment_points:
                             continue
-                        segment_node = motion_node.copy()
+                        segment_node = motion_node.copy(include_segments=False)
                         segment_node.set_motion_metadata(
                             str(segment.get("geometry", "LINEAR")),
                             str(segment.get("traversal", "FEED")),
                             str(segment.get("source_code", "G01")),
                         )
-                        segment_node.set_generated_motion_segments([])
                         projected_points = self._tool_path_compensator.project(segment_points, state)
                         tool_path.append((projected_points, float(segment.get("duration", 0.0))))
                         tool_nodes.append(segment_node)
@@ -275,9 +274,9 @@ class CanalProgramInterpreter:
                     tool_path.append((projected_points, dur or 0.0))
                     tool_nodes.append(motion_node)
             else:
-                wait_info = getattr(node, "extra", {}).get("wait_code") if hasattr(node, "extra") and node.extra else None
-                if wait_info:
-                    non_motion_node = node.copy()
+                node_extra = getattr(node, "extra", None)
+                if node_extra and node_extra.get("wait_code"):
+                    non_motion_node = node.copy(include_segments=False)
                     tool_path.append(([], 0.0))
                     tool_nodes.append(non_motion_node)
 

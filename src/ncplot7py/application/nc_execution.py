@@ -379,6 +379,19 @@ class NCExecutionEngine:
         for tool_path in tool_paths:
             lines: List[Dict] = []
             linesExec: List[int] = []
+            physical_channel = canal_index + 1
+            pose_channel = channel_number if channel_number is not None and len(tool_paths) == 1 else physical_channel
+            state = self.cnc_control.get_nc_state(physical_channel)
+            channel_state = getattr(state, "channel_state", None) if state is not None else None
+            pose_tools = (
+                channel_state.pose_tools
+                if channel_state is not None and channel_state.pose_tools
+                else (getattr(state, "extra", {}).get("pose_tools", {}) if state is not None else {})
+            )
+            config = getattr(state, "machine_config", None) if state is not None else None
+            simulation = getattr(config, "simulation", None) if config is not None else None
+            canal_nodes = nodes[canal_index] if canal_index < len(nodes) else []
+
             for line in tool_path:
                 # each line expected to be (points_list, t)
                 try:
@@ -391,9 +404,9 @@ class NCExecutionEngine:
                 z = []
                 for point in l:
                     if point is not None:
-                        x.append(getattr(point, "x", None))
-                        y.append(getattr(point, "y", None))
-                        z.append(getattr(point, "z", None))
+                        x.append(point.x)
+                        y.append(point.y)
+                        z.append(point.z)
                 line_number = None
                 motion_geometry = None
                 motion_traversal = None
@@ -401,15 +414,17 @@ class NCExecutionEngine:
                 execution_step = None
                 tool_number = "unknown"
                 context = None
-                if canal_index < len(nodes) and len(nodes[canal_index]) > len(lines):
-                    motion_node = nodes[canal_index][len(lines)]
+                if len(canal_nodes) > len(lines):
+                    motion_node = canal_nodes[len(lines)]
                     line_number = getattr(motion_node, "nc_code_line_nr", None)
                     motion_geometry = getattr(motion_node, "motion_geometry", None)
                     motion_traversal = getattr(motion_node, "motion_traversal", None)
                     motion_source_code = getattr(motion_node, "motion_source_code", None)
                     execution_step = getattr(motion_node, "execution_step", None)
                     tool_number = getattr(motion_node, "tool_number", "unknown")
-                    context = getattr(motion_node, "motion_context", None)
+                    context = getattr(motion_node, "_motion_context", None)
+                    if context is None:
+                        context = getattr(motion_node, "motion_context", None)
                     if tool_number is None:
                         tool_number = "unknown"
 
@@ -424,23 +439,17 @@ class NCExecutionEngine:
                     "sourceCode": motion_source_code,
                     "executionStep": execution_step,
                     "toolNumber": tool_number,
-                    "motionContext": context,
+                    "motionContext": dict(context) if isinstance(context, dict) else context,
                     "machiningMode": (context.get("machiningMode") or "unknown") if context is not None else "unknown",
                 }
-                physical_channel = canal_index + 1
-                pose_channel = channel_number if channel_number is not None and len(tool_paths) == 1 else physical_channel
-                state = self.cnc_control.get_nc_state(physical_channel)
-                channel_state = getattr(state, "channel_state", None) if state is not None else None
-                pose_tools = (channel_state.pose_tools if channel_state is not None and channel_state.pose_tools else getattr(state, "extra", {}).get("pose_tools", {})) if state is not None else {}
-                config = getattr(state, "machine_config", None) if state is not None else None
                 tool = pose_tools.get(tool_number) if isinstance(pose_tools, dict) else None
-                if config is not None and getattr(config, "simulation", None) and tool is not None:
+                if simulation and tool is not None:
                     try:
                         from ncplot7py.domain.tool_pose import project_simulation_poses
                         point_data = [{"x": point_x, "y": point_y, "z": point_z} for point_x, point_y, point_z in zip(x, y, z)]
                         plot_line["poses"] = project_simulation_poses(
                             point_data, context, tool["mountingOrientationDegrees"],
-                            config.simulation, str(pose_channel), tool_number, tool["reference"],
+                            simulation, str(pose_channel), tool_number, tool["reference"],
                         )
                     except Exception as pose_error:
                         self._add_error(pose_error, line=line_number or 0, canal=physical_channel)
