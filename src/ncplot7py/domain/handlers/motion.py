@@ -181,11 +181,24 @@ class MotionHandler(Handler):
         linear_dist = state.compute_distance(start, end, axes=list(axes))
         rotary_dist = self._estimate_rotary_axes_travel(start, end, state)
         dist = math.hypot(linear_dist, rotary_dist)
+        sx = start.get("X", 0.0)
+        sy = start.get("Y", 0.0)
+        sz = start.get("Z", 0.0)
+        sa = start.get("A", 0.0)
+        sb = start.get("B", 0.0)
+        sc = start.get("C", 0.0)
+        ex = end.get("X", sx)
+        ey = end.get("Y", sy)
+        ez = end.get("Z", sz)
+        ea = end.get("A", sa)
+        eb = end.get("B", sb)
+        ec = end.get("C", sc)
         if dist <= 0.0:
-            # no motion
-            p = Point(x=end.get("X", 0.0), y=end.get("Y", 0.0), z=end.get("Z", 0.0),
-                      a=end.get("A", 0.0), b=end.get("B", 0.0), c=end.get("C", 0.0))
-            return [p], 0.0
+            # no motion: always include start and end points
+            return [
+                Point(x=sx, y=sy, z=sz, a=sa, b=sb, c=sc),
+                Point(x=ex, y=ey, z=ez, a=ea, b=eb, c=ec),
+            ], 0.0
 
         # determine number of segments. Allow an optional per-state override
         # so callers/tests can request higher resolution by setting
@@ -202,18 +215,12 @@ class MotionHandler(Handler):
         else:
             duration = self._get_feed_duration(dist, state, start, end)
 
-        sx = start.get("X", 0.0)
-        sy = start.get("Y", 0.0)
-        sz = start.get("Z", 0.0)
-        sa = start.get("A", 0.0)
-        sb = start.get("B", 0.0)
-        sc = start.get("C", 0.0)
-        dx = end.get("X", sx) - sx
-        dy = end.get("Y", sy) - sy
-        dz = end.get("Z", sz) - sz
-        da = end.get("A", sa) - sa
-        db = end.get("B", sb) - sb
-        dc = end.get("C", sc) - sc
+        dx = ex - sx
+        dy = ey - sy
+        dz = ez - sz
+        da = ea - sa
+        db = eb - sb
+        dc = ec - sc
         inv_n = 1.0 / n
 
         # include explicit start point so joins between segments preserve

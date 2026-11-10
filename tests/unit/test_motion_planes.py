@@ -48,6 +48,24 @@ class TestMotionPlanes(unittest.TestCase):
         self.assertAlmostEqual(mid.x, math.sqrt(2.0), delta=0.25)
         self.assertAlmostEqual(mid.z, math.sqrt(2.0), delta=0.25)
 
+    def test_stationary_linear_move_emits_start_and_end_points(self):
+        state = CNCState()
+        state.update_axes({"X": -1.0, "Y": 2.0, "Z": 3.5})
+        state.feed_rate = 60.0
+
+        node = NCCommandNode(g_code_command={"G1"}, command_parameter={"X": "-1.0"})
+
+        points, duration = MotionHandler().handle(node, state)
+
+        self.assertEqual(duration, 0.0)
+        self.assertIsNotNone(points)
+        self.assertEqual(len(points), 2)
+        self.assertIsNot(points[0], points[1])
+        for point in points:
+            self.assertAlmostEqual(point.x, -1.0)
+            self.assertAlmostEqual(point.y, 2.0)
+            self.assertAlmostEqual(point.z, 3.5)
+
 
 if __name__ == "__main__":
     unittest.main()

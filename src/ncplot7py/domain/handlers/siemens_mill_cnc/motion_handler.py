@@ -176,7 +176,7 @@ class SiemensMotionHandler(Handler):
     ) -> Tuple[List[Point], float]:
         moving_axes = [axis for axis in ["X", "Y", "Z", "A", "B", "C"] if not math.isclose(start.get(axis, 0.0), end.get(axis, start.get(axis, 0.0)), abs_tol=1e-9)]
         if not moving_axes:
-            return [self._point_from_axes(end)], 0.0
+            return [self._point_from_axes(start), self._point_from_axes(end)], 0.0
 
         axes_by_distance = sorted(moving_axes, key=lambda axis: abs(end.get(axis, 0.0) - start.get(axis, 0.0)), reverse=True)
         current = dict(start)
