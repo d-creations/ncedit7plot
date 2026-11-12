@@ -15,6 +15,7 @@ class FanucG92ThreadingCycleHandler(Handler):
     """Expand modal G92 into rapid infeed, thread cut, retract, and return."""
 
     ALLOWED_WORDS = {"X", "U", "Z", "W", "R", "F", "Q"}
+    ZY_ALLOWED_WORDS = {"Y", "V", "Z", "W", "R", "F", "Q"}
 
     def handle(self, node: NCCommandNode, state: CNCState) -> Tuple[Optional[List[Point]], Optional[float]]:
         codes = {str(code).strip().upper() for code in node.g_code}
@@ -22,16 +23,18 @@ class FanucG92ThreadingCycleHandler(Handler):
             state.fanuc_state.g92_words = None
             state.set_modal("turning_cycle", None)
 
+        radial_axis, inc_radial = self._radial_axes(state)
+
         if "G92" in codes:
             self._cancel_drilling_cycle(state)
-            self._validate_words(node)
+            self._validate_words(node, state)
             words = dict(node.command_parameter)
-            self._require(words, node, {"X", "U"}, "G92 requires X or U")
+            self._require(words, node, {radial_axis, inc_radial}, f"G92 requires {radial_axis} or {inc_radial}")
             self._require(words, node, {"Z", "W"}, "G92 requires Z or W")
             self._require(words, node, {"F"}, "G92 requires thread lead F")
             state.fanuc_state.g92_words = words
             state.set_modal("turning_cycle", "G92")
-        elif state.get_modal("turning_cycle") == "G92" and self._is_repeat(node):
+        elif state.get_modal("turning_cycle") == "G92" and self._is_repeat(node, state):
             words = dict(state.fanuc_state.g92_words or {})
             words.update(node.command_parameter)
             state.fanuc_state.g92_words = words
@@ -44,11 +47,12 @@ class FanucG92ThreadingCycleHandler(Handler):
         self, node: NCCommandNode, state: CNCState, words: Dict[str, str]
     ) -> Tuple[List[Point], float]:
         self._validate_thread_state(node, state, words)
-        start_x = state.get_axis("X")
+        radial_axis, inc_radial = self._radial_axes(state)
+        start_r = state.get_axis(radial_axis)
         start_z = state.get_axis("Z")
-        end_x = target_axis(state, words, "X", "U")
+        end_r = target_axis(state, words, radial_axis, inc_radial)
         end_z = target_axis(state, words, "Z", "W")
-        assert end_x is not None and end_z is not None
+        assert end_r is not None and end_z is not None
         taper = float(words.get("R", 0.0))
         lead = float(words["F"])
 
@@ -56,9 +60,9 @@ class FanucG92ThreadingCycleHandler(Handler):
         points: List[Point] = []
         duration = 0.0
         operations = [
-            ({"X": end_x + taper}, True, None),
-            ({"X": end_x, "Z": end_z}, False, lead),
-            ({"X": start_x}, True, None),
+            ({radial_axis: end_r + taper}, True, None),
+            ({radial_axis: end_r, "Z": end_z}, False, lead),
+            ({radial_axis: start_r}, True, None),
             ({"Z": start_z}, True, None),
         ]
         for target, rapid, operation_lead in operations:
@@ -84,17 +88,30 @@ class FanucG92ThreadingCycleHandler(Handler):
             self._error(node, 922, "G92 Q does not allow a decimal point", str(words["Q"]))
         if q_value < 0.0 or q_value > 360000.0:
             self._error(node, 922, "G92 Q must be between 0 and 360000", str(q_value))
-        for word in {"X", "U", "Z", "W", "R"}.intersection(words):
+        for word in {"X", "U", "Y", "V", "Z", "W", "R"}.intersection(words):
             self._number(words[word], node, word)
 
-    def _validate_words(self, node: NCCommandNode) -> None:
-        invalid = {str(word).upper() for word in node.command_parameter} - self.ALLOWED_WORDS
+    def _validate_words(self, node: NCCommandNode, state: CNCState) -> None:
+        allowed = self.ZY_ALLOWED_WORDS if self._is_zy_plane(state) else self.ALLOWED_WORDS
+        invalid = {str(word).upper() for word in node.command_parameter} - allowed
         if invalid:
             self._error(node, 923, "Unsupported G92 words", ",".join(sorted(invalid)))
 
+    @classmethod
+    def _radial_axes(cls, state: CNCState) -> Tuple[str, str]:
+        if cls._is_zy_plane(state):
+            return ("Y", "V")
+        return ("X", "U")
+
     @staticmethod
-    def _is_repeat(node: NCCommandNode) -> bool:
-        return bool({"X", "U"}.intersection(node.command_parameter))
+    def _is_zy_plane(state: CNCState) -> bool:
+        plane = str(getattr(state.channel_state, "plane", None) or "")
+        return plane.endswith("Z_Y")
+
+    @classmethod
+    def _is_repeat(cls, node: NCCommandNode, state: CNCState) -> bool:
+        radial_axis, inc_radial = cls._radial_axes(state)
+        return bool({radial_axis, inc_radial}.intersection(node.command_parameter))
 
     @staticmethod
     def _cancels_cycle(codes: set[str]) -> bool:

@@ -257,6 +257,12 @@ class MotionHandler(Handler):
         if hasattr(plane, "value"):
             plane = plane.value
         plane_name = str(plane)
+        if plane_name.endswith("Y_X"):
+            return "Y_X"
+        if plane_name.endswith("Z_X"):
+            return "Z_X"
+        if plane_name.endswith("Z_Y"):
+            return "Z_Y"
         if plane_name.endswith("X_Z"):
             return "X_Z"
         if plane_name.endswith("Y_Z"):
@@ -269,8 +275,17 @@ class MotionHandler(Handler):
             # Use ordered axes (Z, X) so CW/CCW follows the positive-Y view
             # convention used by G18/ZX plane arcs.
             return ("X", "Z"), ("Z", "X"), {"X": "I", "Z": "K"}
+        if plane == "Z_X":
+            # Star G118 (X-Z plane): opposite arc direction to G18 (Z-X plane).
+            return ("X", "Z"), ("X", "Z"), {"X": "I", "Z": "K"}
         if plane == "Y_Z":
             return ("Y", "Z"), ("Y", "Z"), {"Y": "J", "Z": "K"}
+        if plane == "Z_Y":
+            # Star G119 (Z-Y plane): opposite arc direction to G19 (Y-Z plane).
+            return ("Y", "Z"), ("Z", "Y"), {"Y": "J", "Z": "K"}
+        if plane == "Y_X":
+            # Star G117 (Y-X plane): opposite arc direction to G17 (X-Y plane).
+            return ("X", "Y"), ("Y", "X"), {"X": "I", "Y": "J"}
         return ("X", "Y"), ("X", "Y"), {"X": "I", "Y": "J"}
 
     def _circular_interpolate(self, start: Dict[str, float], end: Dict[str, float], params: Dict[str, float], state: CNCState, cw: bool) -> Tuple[List[Point], float]:
@@ -420,48 +435,28 @@ class MotionHandler(Handler):
         u_axis, v_axis = ordered_axes
 
         points: List[Point] = [Point(x=sx, y=sy, z=sz, a=sa, b=sb, c=sc)]
-        if u_axis == "X" and v_axis == "Y":
-            for i in range(1, n + 1):
-                t = i * inv_n
-                theta = a0 + da * t
-                points.append(
-                    Point(
-                        x=center_u + math.cos(theta) * radius,
-                        y=center_v + math.sin(theta) * radius,
-                        z=sz + dz * t,
-                        a=sa + da_rot * t,
-                        b=sb + db_rot * t,
-                        c=sc + dc_rot * t,
-                    )
+        for i in range(1, n + 1):
+            t = i * inv_n
+            theta = a0 + da * t
+            u_val = center_u + math.cos(theta) * radius
+            v_val = center_v + math.sin(theta) * radius
+            coords = {
+                "X": sx + dx * t,
+                "Y": sy + dy * t,
+                "Z": sz + dz * t,
+            }
+            coords[u_axis] = u_val
+            coords[v_axis] = v_val
+            points.append(
+                Point(
+                    x=coords["X"],
+                    y=coords["Y"],
+                    z=coords["Z"],
+                    a=sa + da_rot * t,
+                    b=sb + db_rot * t,
+                    c=sc + dc_rot * t,
                 )
-        elif u_axis == "Z" and v_axis == "X":
-            for i in range(1, n + 1):
-                t = i * inv_n
-                theta = a0 + da * t
-                points.append(
-                    Point(
-                        x=center_v + math.sin(theta) * radius,
-                        y=sy + dy * t,
-                        z=center_u + math.cos(theta) * radius,
-                        a=sa + da_rot * t,
-                        b=sb + db_rot * t,
-                        c=sc + dc_rot * t,
-                    )
-                )
-        else:
-            for i in range(1, n + 1):
-                t = i * inv_n
-                theta = a0 + da * t
-                points.append(
-                    Point(
-                        x=sx + dx * t,
-                        y=center_u + math.cos(theta) * radius,
-                        z=center_v + math.sin(theta) * radius,
-                        a=sa + da_rot * t,
-                        b=sb + db_rot * t,
-                        c=sc + dc_rot * t,
-                    )
-                )
+            )
 
         return points, duration
 

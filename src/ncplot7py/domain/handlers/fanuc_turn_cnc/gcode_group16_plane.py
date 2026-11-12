@@ -20,8 +20,11 @@ from ncplot7py.domain.exceptions import raise_nc_error, ExceptionTyps
 
 class PlaneMode(Enum):
     X_Y = "X_Y"  # G17
-    X_Z = "X_Z"  # G18
+    X_Z = "X_Z"  # G18 (Z-X plane)
     Y_Z = "Y_Z"  # G19
+    Y_X = "Y_X"  # G117 (reversed Y-X plane)
+    Z_X = "Z_X"  # G118 (reversed X-Z plane)
+    Z_Y = "Z_Y"  # G119 (reversed Z-Y plane)
 
 
 class GCodeGroup16PlaneExecChainLink(Handler):

@@ -152,6 +152,12 @@ class FanucCoordinateRotationHandler(Handler):
     def _plane(state: CNCState) -> Tuple[str, Tuple[str, str]]:
         raw_plane = state.channel_state.plane or "X_Z"
         value = str(getattr(raw_plane, "value", raw_plane))
+        if value.endswith("Y_X"):
+            return "G117", ("Y", "X")
+        if value.endswith("Z_X"):
+            return "G118", ("X", "Z")
+        if value.endswith("Z_Y"):
+            return "G119", ("Z", "Y")
         if value.endswith("X_Y"):
             return "G17", ("X", "Y")
         if value.endswith("Y_Z"):

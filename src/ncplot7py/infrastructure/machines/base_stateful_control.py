@@ -18,6 +18,12 @@ def _plane_from_default_code(default_plane: str) -> str:
         return "X_Z"
     if plane_code == "G19":
         return "Y_Z"
+    if plane_code == "G117":
+        return "Y_X"
+    if plane_code == "G118":
+        return "Z_X"
+    if plane_code == "G119":
+        return "Z_Y"
     return "X_Y"
 
 

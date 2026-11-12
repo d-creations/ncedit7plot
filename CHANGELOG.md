@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.3] - 2026-11-12
+
+### Added
+- Added `StarPlaneSelectionHandler` (`"star_group_16_plane"`) for STAR Group 16 reversed plane selection codes `G117` (`Y-X`), `G118` (`X-Z`), and `G119` (`Z-Y`) alongside `G17`/`G18`/`G19`, wired into all `FANUC_STAR_*` machine profiles in `machines.json`.
+- Added Star `PS0499` alarm validation on `G117`/`G118`/`G119` for forbidden canned cycles (`G70`–`G76`, `G80`/`G83`–`G89`, `G90`, `G94`), `G92` on `G117`/`G118`, polar (`G112`), cylindrical (`G107`), skip (`G31`), helical interpolation, chamfering/corner R/DDDP, and plane changes while `G41`/`G42` is active without `G40`.
+- Added `Z-Y` plane (`G119`) threading support (`Y`/`V` radial infeed with `Z`/`W`) to `FanucG92ThreadingCycleHandler`.
+
+### Changed
+- Updated `MotionHandler`, `ToolPathCompensator`, `FanucCoordinateRotationHandler`, and `base_stateful_control.py` to support reversed plane axis ordering (`Y_X`, `Z_X`, `Z_Y`), inverting `G2`/`G3` circular interpolation sweep and `G41`/`G42` normal directions while preserving Star imaginary tool nose tip-to-center offsets.
+- Updated `MotionHandler` to emit start and end points for stationary linear moves and enhanced rotary plot transformation handling.
+
+---
+
 ## [0.4.2] - 2026-11-04
 
 ### Added

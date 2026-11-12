@@ -150,6 +150,9 @@ class ToolPathCompensator:
         "X_Y": ("x", "y"),
         "X_Z": ("x", "z"),
         "Y_Z": ("y", "z"),
+        "Y_X": ("y", "x"),
+        "Z_X": ("z", "x"),
+        "Z_Y": ("z", "y"),
     }
     _TURN_TIP_TO_CENTER = {
         1: (-1.0, -1.0),
@@ -247,12 +250,14 @@ class ToolPathCompensator:
         policy = getattr(config, "tool_selection", {}) if config is not None else {}
         if not isinstance(policy, dict) or policy.get("mode") != "star":
             return None
-        if plane != "X_Z":
+        if plane not in {"X_Z", "Z_X"}:
             return None
         orientation = getattr(state.tool_compensation, "tip_orientation", None)
         if orientation not in self._TURN_TIP_TO_CENTER:
             return None
         vector = self._TURN_TIP_TO_CENTER[orientation]
+        if plane == "Z_X":
+            return vector[1] * radius, vector[0] * radius
         return vector[0] * radius, vector[1] * radius
 
     @staticmethod

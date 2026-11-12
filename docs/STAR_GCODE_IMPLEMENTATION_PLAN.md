@@ -76,7 +76,7 @@ description; use the command section and option availability for implementation.
 | `G98`, `G99` | Feed per minute / revolution | Implemented | `group_5_feed_mode`; make motion duration consume the selected mode. |
 | `G107` | Cylindrical interpolation | Not implemented | Add a cylindrical-coordinate transform before `MotionHandler`. |
 | `G112`, `G113` | Polar interpolation / cancel | Implemented / partial | `group_21_polar` covers transformation; add Star mode and conflict validation. |
-| `G117`, `G118`, `G119` | Manual-reference tokens; exact function to verify | Not implemented | Hold until the command section identifies exact semantics. |
+| `G117`, `G118`, `G119` | Reversed plane selection (`Y-X`, `X-Z`, `Z-Y`) | Implemented | `StarPlaneSelectionHandler` (`star_group_16_plane`) selects reversed planes, inverts arc/compensation plane axis order, allows `G92` on `G119`, and enforces `PS0499` restrictions. |
 | `G125`, `G130`, `G131`, `G132`, `G133` | Star automatic coordinate setting | Partial | `StarAutomaticCoordinateHandler` validates formats and sequence state; proprietary coordinate formulas remain missing. |
 | `G161` | Star Step Cycle Pro | Partial | `StarG161StepCycleHandler` accepts required `A/D`, optional endpoint/`F/Q`, and no prior `M41`. It stores cycle parameters and executes a supplied endpoint as `LINEAR/FEED/G161`; detailed amplitude oscillation remains unavailable. |
 | `G164`, `G165` | Star eccentric machining cycle | Recognized only | Add option-gated cycle behavior; validate `A`/`B`, `C`/`D`, speed, and allowed words. |
@@ -169,6 +169,7 @@ The following work was completed on 2026-08-12 and is covered by focused tests:
 | FANUC turn | `fanuc_g76_threading` | `fanuc_turn_cnc/g76_threading_cycle.py` | Two-block `G76`, implied decimals, rough-pass scheduling, and finishing passes. |
 | FANUC turn | `fanuc_g36_circular_threading` | `fanuc_turn_cnc/g36_circular_threading.py` | Option-gated CCW circular threading with `G36` source metadata. |
 | FANUC turn | `fanuc_coordinate_rotation` | `fanuc_turn_cnc/coordinate_rotation_handler.py` | `G68.1/G69.1`, selected-plane rotation, restrictions, arc-offset rotation, and Star `G69` alias. |
+| Star | `star_group_16_plane` | `star_machine/plane_selection_handler.py` | `G17/G18/G19` and reversed `G117/G118/G119` plane selection, `G40` prerequisite, and `PS0499` restrictions. |
 | Star | `star_spindle_fluctuation` | `star_machine/spindle_fluctuation_handler.py` | `G25/G26` monitoring state and conflict validation. |
 | Star | `star_automatic_coordinate` | `star_machine/automatic_coordinate_handler.py` | `G125/G130-G133` formats, prerequisites, and state sequence. |
 | Star | `star_g266` | `star_machine/g266_handler.py` | `G266` allowed/required words, numeric validation, and known variable mapping. |

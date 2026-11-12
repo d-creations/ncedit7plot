@@ -54,6 +54,7 @@ HANDLER_REGISTRY: Dict[str, Tuple[str, str]] = {
     "fanuc_cutter_comp": ("ncplot7py.domain.handlers.fanuc_mill_cnc.cutter_comp_handler", "FanucCutterCompCommandHandler"),
 
     # Turn Mill Star
+    "star_group_16_plane": ("ncplot7py.domain.handlers.star_machine.plane_selection_handler", "StarPlaneSelectionHandler"),
     "star_spindle_fluctuation": ("ncplot7py.domain.handlers.star_machine.spindle_fluctuation_handler", "StarSpindleFluctuationHandler"),
     "star_automatic_coordinate": ("ncplot7py.domain.handlers.star_machine.automatic_coordinate_handler", "StarAutomaticCoordinateHandler"),
     "star_g266": ("ncplot7py.domain.handlers.star_machine.g266_handler", "StarG266Handler"),
