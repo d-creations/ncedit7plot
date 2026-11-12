@@ -2156,6 +2156,7 @@
     ],
     "default_plane": "G18",
     "default_feed_mode": "FEED_PER_REV",
+    "cycle_start_code": "M20",
     "rapid_feed_rate": 20000.0,
     "a_axis_rollover": false,
     "b_axis_rollover": false,
@@ -2590,6 +2591,7 @@
     ],
     "default_plane": "G18",
     "default_feed_mode": "FEED_PER_REV",
+    "cycle_start_code": "M20",
     "rapid_feed_rate": 20000.0,
 
     "a_axis_rollover": false,
@@ -2958,6 +2960,7 @@
     ],
     "default_plane": "G18",
     "default_feed_mode": "FEED_PER_REV",
+    "cycle_start_code": "M20",
     "rapid_feed_rate": 20000.0,
 
     "a_axis_rollover": false,

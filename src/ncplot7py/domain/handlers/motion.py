@@ -99,8 +99,12 @@ class MotionHandler(Handler):
             key = k.upper()
             if key in self._GEOMETRY_AXES:
                 absolute_target_spec[self._physical_axis(state, key)] = _to_float(v)
+                if key == "C":
+                    state.star_state.c_axis_mode = "positionControlled"
             elif key in configured_axes:
                 absolute_target_spec[key] = _to_float(v)
+                if key in {"C1", "C2"}:
+                    state.star_state.c_axis_mode = "positionControlled"
             elif seventh_axis_name and key == seventh_axis_name:
                 value = _to_float(v)
                 absolute_target_spec[key] = value
@@ -110,6 +114,8 @@ class MotionHandler(Handler):
                 # UVW are incremental XYZ moves and H is an incremental C move.
                 mapped = self._physical_axis(state, self._INCREMENTAL_MAP[key])
                 incremental_target_spec[mapped] = incremental_target_spec.get(mapped, 0.0) + _to_float(v)
+                if key == "H":
+                    state.star_state.c_axis_mode = "positionControlled"
             # I,J,K,R,F handled later
             # I,J,K,R,F handled later
 
@@ -163,6 +169,11 @@ class MotionHandler(Handler):
         # (`ModalHandler`) earlier in the chain. MotionHandler should not
         # mutate modal state; it only consumes values from `state` to
         # compute durations.
+        if getattr(state.channel_state, "_defer_rotary_plot_transform", False) and (
+            state.tool_path_mode == "center" and state.tool_compensation.radius_mode != "OFF"
+        ):
+            node.extra["_rotary_plot_transform_deferred"] = True
+            return points, duration
         return self._transform_points_for_plot(points, state), duration
 
     def _linear_interpolate(

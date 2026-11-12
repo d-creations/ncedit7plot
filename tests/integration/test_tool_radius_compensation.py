@@ -282,6 +282,77 @@ class TestToolRadiusCompensationIntegration(unittest.TestCase):
         self.assertAlmostEqual(segments[0]["points"][0]["y"], -2.0)
         self.assertAlmostEqual(segments[0]["points"][-1]["y"], -2.0)
 
+    def test_star_sr20r_g19_g41_compensation_and_pose_after_h180_spindle_rotation(self):
+        config = self.cgiserver.get_machine_config("FANUC_STAR_SR20R_IV_B")
+        entry = {
+            "program": (
+                "#531=20.0\n"
+                "G40M9\n"
+                "M5\n"
+                "M36S3000\n"
+                "T3100\n"
+                "G0X[#531+1.0]Y0Z20.0T31\n"
+                "G19\n"
+                "G1W-2.0G41F0.1\n"
+                "G2W0.0K2.0U-0.2\n"
+                "G2W0.0K2.0U-0.2\n"
+                "G0W2.0\n"
+                "G40\n"
+                "G0X[#531+1.0]Y0\n"
+                "G0X[#531+1.0]Y0Z20.0H180\n"
+                "G19\n"
+                "G1W-2.0G41\n"
+                "G2W0.0K2.0U-0.2\n"
+                "G2W0.0K2.0U-0.2\n"
+                "G0W2.0\n"
+                "G40\n"
+                "G0X[#531+1.0]Y0\n"
+            ),
+            "machineName": config.name,
+            "canalNr": "1",
+            "toolValues": [{"toolNumber": 3100, "qValue": 9, "rValue": 0.5}],
+            "simulation": {
+                "profileRevision": config.simulation_metadata()["profileRevision"],
+                "tools": [{
+                    "toolNumber": 3100,
+                    "reference": "millingTip",
+                    "mountingOrientationDegrees": [0, 90, 0],
+                }],
+            },
+        }
+        payload = {
+            "poseContract": "workpiece-tool-reference-v1",
+            "toolPathMode": "center",
+            "machinedata": [entry],
+        }
+        result = self.cgiserver.handle_execute_programs(
+            [entry], tool_path_mode="center", request_payload=payload,
+        )
+
+        self.assertTrue(result["success"], result.get("errors"))
+        arcs = [
+            seg for seg in result["canal"]["1"]["segments"]
+            if seg["geometry"] == "ARC_CW"
+        ]
+        self.assertEqual(len(arcs), 4)
+        for arc in arcs:
+            ys = [pt["y"] for pt in arc["points"]]
+            zs = [pt["z"] for pt in arc["points"]]
+            self.assertAlmostEqual(max(ys) - min(ys), 5.0, delta=0.05)
+            self.assertAlmostEqual(max(zs) - min(zs), 5.0, delta=0.05)
+
+        # First pair of arcs at C1=0 (positive X side, tool shank pointing +X)
+        self.assertAlmostEqual(arcs[0]["points"][0]["x"], 10.5, places=3)
+        self.assertAlmostEqual(arcs[0]["points"][-1]["x"], 10.4, places=3)
+        self.assertAlmostEqual(abs(arcs[0]["poses"][0]["orientation"][1]), 0.70710678, places=5)
+        self.assertAlmostEqual(abs(arcs[0]["poses"][0]["orientation"][3]), 0.70710678, places=5)
+
+        # Second pair of arcs at C1=180 (negative X side in workpiece frame, tool rotated 180 deg)
+        self.assertAlmostEqual(arcs[2]["points"][0]["x"], -10.5, places=3)
+        self.assertAlmostEqual(arcs[2]["points"][-1]["x"], -10.4, places=3)
+        self.assertAlmostEqual(abs(arcs[2]["poses"][0]["orientation"][0]), 0.70710678, places=5)
+        self.assertAlmostEqual(abs(arcs[2]["poses"][0]["orientation"][2]), 0.70710678, places=5)
+
 
 if __name__ == "__main__":
     unittest.main()

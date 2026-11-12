@@ -26,6 +26,7 @@ HANDLER_REGISTRY: Dict[str, Tuple[str, str]] = {
     "siemens_tool_handler": ("ncplot7py.domain.handlers.siemens_machine.tool_handler", "SiemensToolHandler"),
     "star_fanuc_tool_handler": ("ncplot7py.domain.handlers.star_machine.tool_handler", "StarFanucToolHandler"),
     "cycle_end": ("ncplot7py.domain.handlers.cycle_end", "CycleEnd"),
+    "cyclus_control": ("ncplot7py.domain.handlers.cycle_end", "CycleEnd"),
 
     # Generic & Fanuc
     "group_0_coordinate_set": ("ncplot7py.domain.handlers.fanuc_turn_cnc.gcode_group0_coordinate_set", "GCodeGroup0CoordinateSetExecChainLink"),

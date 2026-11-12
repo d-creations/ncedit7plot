@@ -55,9 +55,9 @@ class StarModalMCodeHandler(BaseModalMCodeHandler):
                 "speed": 0.0,
             }
 
-        if m_code == "M8":
+        if m_code == "M8" or m_code in {"M36", "M37", "M46", "M47", "M56", "M57"}:
             state.star_state.c_axis_mode = "positionControlled"
-        elif m_code == "M9":
+        elif m_code in {"M3", "M4", "M9"}:
             state.star_state.c_axis_mode = "spindleInvariant"
         elif m_code in {"M40", "M41"}:
             state.star_state.machining_mode = m_code

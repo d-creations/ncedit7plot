@@ -209,6 +209,7 @@ class CanalProgramInterpreter:
                 for axis in configured_axes
                 if axis in state_axes
             }
+            state.channel_state._defer_rotary_plot_transform = True
             if chain is not None:
                 try:
                     pts, dur = chain.handle(node, state)
@@ -232,6 +233,8 @@ class CanalProgramInterpreter:
                         value=str(exc),
                         line=getattr(node, "nc_code_line_nr", 0) or 0,
                     )
+                finally:
+                    state.channel_state._defer_rotary_plot_transform = False
 
             if debug_enabled:
                 try:
@@ -255,6 +258,7 @@ class CanalProgramInterpreter:
                     tool_number=active_tool if active_tool is not None else "unknown",
                     motion_context=self.capture_motion_context(channel_name, state, start_axes),
                 )
+                deferred_rotary = bool(getattr(node, "extra", {}).get("_rotary_plot_transform_deferred"))
                 if generated_segments:
                     for segment in generated_segments:
                         segment_points = segment.get("points")
@@ -269,10 +273,14 @@ class CanalProgramInterpreter:
                         projected_points = self._tool_path_compensator.project(segment_points, state)
                         tool_path.append((projected_points, float(segment.get("duration", 0.0))))
                         tool_nodes.append(segment_node)
+                        if deferred_rotary:
+                            segment_node.extra["_rotary_plot_transform_deferred"] = True
                 else:
                     projected_points = self._tool_path_compensator.project(pts, state)
                     tool_path.append((projected_points, dur or 0.0))
                     tool_nodes.append(motion_node)
+                    if deferred_rotary:
+                        motion_node.extra["_rotary_plot_transform_deferred"] = True
             else:
                 node_extra = getattr(node, "extra", None)
                 if node_extra and node_extra.get("wait_code"):
@@ -285,6 +293,13 @@ class CanalProgramInterpreter:
                 break
             node = next_node
             steps += 1
+
+        if tool_path and tool_nodes:
+            from ncplot7py.domain.handlers.motion import MotionHandler
+            motion_helper = MotionHandler()
+            for idx, ((seg_pts, seg_dur), seg_node) in enumerate(zip(tool_path, tool_nodes)):
+                if seg_pts and getattr(seg_node, "extra", {}).get("_rotary_plot_transform_deferred"):
+                    tool_path[idx] = (motion_helper._transform_points_for_plot(seg_pts, state), seg_dur)
 
         return tool_path, tool_nodes, exec_sequence
 
