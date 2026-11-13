@@ -223,6 +223,59 @@ class TestSimulationContract(unittest.TestCase):
 
         self.assertEqual(poses[0]["frameId"], "workpiece:subSpindle")
 
+    def test_star_c_axis_pose_direction_matches_plot_transform_and_isolates_b1_unit(self):
+        def rotate_vec(q, v):
+            qx, qy, qz, qw = q
+            vx, vy, vz = v
+            tx = 2 * (qy * vz - qz * vy)
+            ty = 2 * (qz * vx - qx * vz)
+            tz = 2 * (qx * vy - qy * vx)
+            return (
+                vx + qw * tx + qy * tz - qz * ty,
+                vy + qw * ty + qz * tx - qx * tz,
+                vz + qw * tz + qx * ty - qy * tx,
+            )
+
+        for name, tool_no in (
+            ("FANUC_STAR_SR20R_IV_B", 3100),
+            ("FANUC_STAR_SV20R", 3100),
+            ("FANUC_STAR_SG42", 1),
+        ):
+            with self.subTest(profile=name):
+                config = get_machine_config(name)
+                # Radial +X tool ([0, 90, 0]) at C1=90° must point along +Y ([0, 1, 0]) just like plotted (X=10, Y=0) -> (0, +10)
+                poses_c90 = project_fixed_target_poses(
+                    [{"x": 0.0, "y": 10.0, "z": 0.0}],
+                    {
+                        "startAxes": {"B1": 0.0, "C1": 90.0, "C2": 0.0},
+                        "endAxes": {"B1": 0.0, "C1": 90.0, "C2": 0.0},
+                        "workpieceRotationMode": "positionControlled",
+                    },
+                    [0, 90, 0], config.simulation, "1", tool_no, "millingTip",
+                )
+                sx, sy, sz = rotate_vec(poses_c90[0]["orientation"], (0.0, 0.0, 1.0))
+                self.assertAlmostEqual(sx, 0.0, places=6)
+                self.assertAlmostEqual(sy, 1.0, places=6)
+                self.assertAlmostEqual(sz, 0.0, places=6)
+
+        sr_config = get_machine_config("FANUC_STAR_SR20R_IV_B")
+        tilted_context = {
+            "startAxes": {"B1": 45.0, "C1": 0.0, "C2": 0.0},
+            "endAxes": {"B1": 45.0, "C1": 0.0, "C2": 0.0},
+            "workpieceRotationMode": "positionControlled",
+        }
+        gang_pose = project_fixed_target_poses(
+            [{"x": 10.0, "y": 0.0, "z": 0.0}],
+            tilted_context, [0, 90, 0], sr_config.simulation, "1", 3100, "millingTip",
+        )[0]["orientation"]
+        b1_pose = project_fixed_target_poses(
+            [{"x": 10.0, "y": 0.0, "z": 0.0}],
+            tilted_context, [0, 90, 0], sr_config.simulation, "1", 1600, "millingTip",
+        )[0]["orientation"]
+        # T3100 on gangToolPost remains unaffected by B1=45°, while T1600 on tiltingToolUnit tilts
+        self.assertAlmostEqual(rotate_vec(gang_pose, (0.0, 0.0, 1.0))[0], 1.0, places=6)
+        self.assertNotAlmostEqual(rotate_vec(b1_pose, (0.0, 0.0, 1.0))[0], 1.0, places=3)
+
 
 if __name__ == "__main__":
     unittest.main()

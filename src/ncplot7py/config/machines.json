@@ -2288,7 +2288,7 @@
                 0,
                 1
               ],
-              "sign": 1,
+              "sign": -1,
               "zeroDegrees": 0
             }
           ]
@@ -2309,7 +2309,7 @@
                 0,
                 1
               ],
-              "sign": 1,
+              "sign": -1,
               "zeroDegrees": 0
             }
           ]
@@ -2321,7 +2321,7 @@
           "tools": {
             "kind": "numericRange",
             "from": 100,
-            "to": 1500
+            "to": 1599
           },
           "carrierId": "gangToolPost",
           "target": {
@@ -2337,10 +2337,27 @@
           "channelId": "1",
           "tools": {
             "kind": "numericRange",
-            "from": 1501,
-            "to": 9999
+            "from": 1600,
+            "to": 1999
           },
           "carrierId": "tiltingToolUnit",
+          "target": {
+            "mode": "execution",
+            "allowedWorkpieceCarrierIds": [
+              "mainSpindle",
+              "subSpindle"
+            ],
+            "defaultWorkpieceCarrierId": "mainSpindle"
+          }
+        },
+        {
+          "channelId": "1",
+          "tools": {
+            "kind": "numericRange",
+            "from": 2000,
+            "to": 9999
+          },
+          "carrierId": "gangToolPost",
           "target": {
             "mode": "execution",
             "allowedWorkpieceCarrierIds": [
@@ -2714,7 +2731,7 @@
                 0,
                 1
               ],
-              "sign": 1,
+              "sign": -1,
               "zeroDegrees": 0
             }
           ]
@@ -2735,7 +2752,7 @@
                 0,
                 1
               ],
-              "sign": 1,
+              "sign": -1,
               "zeroDegrees": 0
             }
           ]
@@ -3057,7 +3074,7 @@
                 0,
                 1
               ],
-              "sign": 1,
+              "sign": -1,
               "zeroDegrees": 0
             }
           ]
@@ -3078,7 +3095,7 @@
                 0,
                 1
               ],
-              "sign": 1,
+              "sign": -1,
               "zeroDegrees": 0
             }
           ]
