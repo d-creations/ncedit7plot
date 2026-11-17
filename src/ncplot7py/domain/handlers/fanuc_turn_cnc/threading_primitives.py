@@ -22,6 +22,7 @@ class ThreadingPrimitiveEmitter:
         rapid: bool,
         source_code: str,
         lead: Optional[float] = None,
+        start_angle_deg: float = 0.0,
     ) -> Tuple[List[Point], float]:
         program_target = {
             axis: value * 2.0 if state.is_axis_diameter(axis) else value
@@ -37,6 +38,7 @@ class ThreadingPrimitiveEmitter:
             traversal="RAPID" if rapid else "FEED",
             source_code="G00" if rapid else source_code,
             lead=lead,
+            start_angle_deg=start_angle_deg,
         )
 
     def circular_ccw(
@@ -46,6 +48,7 @@ class ThreadingPrimitiveEmitter:
         *,
         source_code: str,
         lead: float,
+        start_angle_deg: float = 0.0,
     ) -> Tuple[List[Point], float]:
         command = dict(command_parameter)
         command["F"] = str(lead)
@@ -56,6 +59,7 @@ class ThreadingPrimitiveEmitter:
             traversal="FEED",
             source_code=source_code,
             lead=lead,
+            start_angle_deg=start_angle_deg,
         )
 
     def _emit(
@@ -67,6 +71,7 @@ class ThreadingPrimitiveEmitter:
         traversal: str,
         source_code: str,
         lead: Optional[float],
+        start_angle_deg: float = 0.0,
     ) -> Tuple[List[Point], float]:
         old_mode = state.channel_state.feed_mode
         old_feed = state.feed_rate
@@ -82,13 +87,20 @@ class ThreadingPrimitiveEmitter:
         result_points = points or []
         result_duration = duration or 0.0
         if result_points:
-            self.segments.append({
+            segment: Dict[str, object] = {
                 "points": result_points,
                 "duration": result_duration,
                 "geometry": geometry,
                 "traversal": traversal,
                 "source_code": source_code,
-            })
+            }
+            if lead is not None:
+                segment["machining_mode"] = "threading"
+                segment["threading"] = {
+                    "lead": float(lead),
+                    "startAngleDeg": float(start_angle_deg),
+                }
+            self.segments.append(segment)
         return result_points, result_duration
 
 

@@ -270,6 +270,13 @@ class CanalProgramInterpreter:
                             str(segment.get("traversal", "FEED")),
                             str(segment.get("source_code", "G01")),
                         )
+                        if "machining_mode" in segment or "threading" in segment:
+                            segment_context = dict(segment_node.motion_context or {})
+                            if "machining_mode" in segment:
+                                segment_context["machiningMode"] = str(segment["machining_mode"])
+                            if "threading" in segment:
+                                segment_context["threading"] = dict(segment["threading"])
+                            segment_node._motion_context = segment_context
                         projected_points = self._tool_path_compensator.project(segment_points, state)
                         tool_path.append((projected_points, float(segment.get("duration", 0.0))))
                         tool_nodes.append(segment_node)

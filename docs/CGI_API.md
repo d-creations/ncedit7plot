@@ -183,8 +183,9 @@ Each item in a canal's `segments` list includes motion semantics separately from
 - `sourceCode` is the effective modal interpolation code (`G00`, `G01`, `G02`, or `G03`) when known.
 - `executionStep` is the zero-based executed-command occurrence in its channel. Generated cycle segments from the same command share one step.
 - `toolNumber` is the active numeric tool, named-tool string, or `"unknown"` when no active tool can be determined.
-- `machiningMode`: `'turning' | 'milling' | 'unknown'`. Identifies the machining mode directly on each segment separately from kinematics/movement (`RAPID`, `FEED`, `ARC`).
+- `machiningMode`: `'turning' | 'milling' | 'threading' | 'unknown'`. Identifies the machining mode directly on each segment separately from kinematics/movement (`RAPID`, `FEED`, `ARC`).
   - Engine `plot` entries expose the same field alongside `motionContext`. The context retains captured `startAxes`, `endAxes`, tool offsets and resolved carrier/target state; mode alone does not replace the execution evidence needed for pose normalization and non-cutting command certification.
+  - Threading cutting segments (`G92`, `G76`, `G36`) emit `machiningMode: "threading"` together with `"threading": {"lead": <number>, "startAngleDeg": <number>}`, while their rapid infeed, retract, and return moves keep the underlying turning mode.
   - STAR turning: `M3`/`M4` sets turning mode; power-driven tools (`M36`/`M37`, `M46`/`M47`, `M56`/`M57`) set milling mode; `M5` stops main spindle, `M38`/`M48`/`M58` stop live tools.
   - FANUC turning: `M3`/`M4` sets turning mode; `M5` stops the turning spindle and subsequent operations switch to milling mode; subsequent `M3`/`M4` switches back to turning.
   - FANUC milling and Siemens milling: `M3`/`M4`/`M5` is always milling mode.

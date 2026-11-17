@@ -2416,6 +2416,1587 @@
       }
     }
   },
+  "FANUC_STAR_SR20J2B": {
+    "name": "FANUC_STAR_SR20J2B",
+    "control_type": "FANUC",
+    "parser_name": "fanuc",
+    "lexer_name": "fanuc",
+    "machine_type": "TURN_MILL",
+    "channels": 2,
+    "regex_patterns": {
+      "variables": {
+        "pattern": "#(\\d+)",
+        "description": "Variables #1 - #999",
+        "range": {
+          "min": 1,
+          "max": 999
+        }
+      },
+      "keywords": {
+        "pattern": "(?![^()]*\\))((?<![A-Za-z])T0*(100|[1-9][0-9]{2,3})(?![\\d.])|M(2[0-9]{2}|[3-8][0-8]{2})|M82|M83|M20|G(?:255|266)|M30)",
+        "description": "Keywords: T100-T9999, M200-M888, M82, M83, M20",
+        "codes": {
+          "extended_tools": {
+            "pattern": "(?![^()]*\\))(?<![A-Za-z])T0*(100|[1-9][0-9]{2,3})(?![\\d.])",
+            "range": {
+              "min": 100,
+              "max": 9999
+            }
+          },
+          "m_codes_range": {
+            "pattern": "M(2[0-9]{2}|[3-8][0-8]{2})",
+            "range": {
+              "min": 200,
+              "max": 888
+            }
+          },
+          "special_m_codes": [
+            "M82",
+            "M83",
+            "M20"
+          ],
+          "g_codes": [
+            "G255",
+            "G266"
+          ],
+          "program_control": [
+            "M0",
+            "M1",
+            "M99"
+          ]
+        }
+      }
+    },
+    "axes": [
+      "X1",
+      "Y1",
+      "Z1",
+      "C1",
+      "X2",
+      "Y2",
+      "Z2",
+      "C2"
+    ],
+    "variable_pattern": "#(\\d+)",
+    "variable_prefix": "#",
+    "tool_range": [
+      0,
+      9999
+    ],
+    "tool_selection": {
+      "mode": "star",
+      "tool_digits": [
+        3,
+        4
+      ],
+      "offset_digits": [
+        1,
+        2
+      ],
+      "named_tools": false,
+      "offset_scope": "global"
+    },
+    "axis_bindings": {
+      "X": {
+        "defaultByChannel": {
+          "1": {
+            "axisId": "X1"
+          },
+          "2": {
+            "axisId": "X2"
+          }
+        },
+        "mcodeOverrides": {
+          "M171": {
+            "axisId": "X2"
+          },
+          "M172": {
+            "axisId": "X1"
+          }
+        }
+      },
+      "Y": {
+        "defaultByChannel": {
+          "1": {
+            "axisId": "Y1"
+          },
+          "2": {
+            "axisId": "Y2"
+          }
+        }
+      },
+      "Z": {
+        "defaultByChannel": {
+          "1": {
+            "axisId": "Z1"
+          },
+          "2": {
+            "axisId": "Z2"
+          }
+        }
+      },
+      "C": {
+        "defaultByChannel": {
+          "1": {
+            "targetCarrierId": "mainSpindle",
+            "axisId": "C1"
+          },
+          "2": {
+            "targetCarrierId": "subSpindle",
+            "axisId": "C2"
+          }
+        },
+        "mcodeOverrides": {
+          "M171": {
+            "targetCarrierId": "subSpindle",
+            "axisId": "C2"
+          },
+          "M172": {
+            "targetCarrierId": "mainSpindle",
+            "axisId": "C1"
+          }
+        }
+      }
+    },
+    "synchronization_strategy": "STAR_WAIT",
+    "supported_gcode_groups": [
+      "axis_binding",
+      "fanuc_alarm",
+      "variable",
+      "control_flow",
+      "star_g266",
+      "star_fanuc_tool_handler",
+      "precheck",
+      "fanuc_turn_spindle_limit",
+      "fanuc_turn_units",
+      "modal",
+      "star_mcode_modal",
+      "star_spindle",
+      "group_0_coordinate_set",
+      "group_2_speed_mode",
+      "star_spindle_fluctuation",
+      "group_5_feed_mode",
+      "star_group_16_plane",
+      "fanuc_coordinate_rotation",
+      "group_21_polar",
+      "fanuc_cutter_comp",
+      "cornering",
+      "wait_code",
+      "spindle_speed",
+      "cycle_end",
+      "star_automatic_coordinate",
+      "star_g161_step_cycle",
+      "fanuc_g92_threading",
+      "fanuc_g76_threading",
+      "fanuc_g36_circular_threading",
+      "fanuc_turn_drilling_cycles",
+      "motion"
+    ],
+    "default_plane": "G18",
+    "default_feed_mode": "FEED_PER_REV",
+    "cycle_start_code": "M20",
+    "rapid_feed_rate": 35000.0,
+    "a_axis_rollover": false,
+    "b_axis_rollover": false,
+    "c_axis_rollover": true,
+    "a_axis_shortest_path": false,
+    "b_axis_shortest_path": false,
+    "c_axis_shortest_path": true,
+    "polar_interpolate_axis": "Y",
+    "diameter_axes": [
+      "X1",
+      "Y",
+      "Y1",
+      "X2",
+      "Y2"
+    ],
+    "g96_reference_axis": "X1",
+    "circular_threading_enabled": true,
+    "step_cycle_pro_enabled": true,
+    "simulation": {
+      "schemaVersion": 1,
+      "revision": 2,
+      "modelId": "STAR_SR20J2B",
+      "displayName": "STAR SR-20JII Type B",
+      "fidelity": "configured",
+      "poseContract": "workpiece-tool-reference-v1",
+      "stockBindings": [
+        {
+          "frameId": "workpiece:mainSpindle",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "spindleOrigin": [
+            0,
+            0,
+            0
+          ],
+          "spindleAxis": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "frameId": "workpiece:subSpindle",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "spindleOrigin": [
+            0,
+            0,
+            0
+          ],
+          "spindleAxis": [
+            0,
+            0,
+            1
+          ]
+        }
+      ],
+      "carriers": [
+        {
+          "id": "gangToolPost",
+          "role": "tool",
+          "referenceOrientationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "rotationChain": []
+        },
+        {
+          "id": "backToolUnit",
+          "role": "tool",
+          "referenceOrientationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "rotationChain": []
+        },
+        {
+          "id": "mainSpindle",
+          "role": "workpiece",
+          "referenceOrientationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "rotationChain": [
+            {
+              "axisId": "C1",
+              "axis": [
+                0,
+                0,
+                1
+              ],
+              "sign": -1,
+              "zeroDegrees": 0
+            }
+          ]
+        },
+        {
+          "id": "subSpindle",
+          "role": "workpiece",
+          "referenceOrientationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "rotationChain": [
+            {
+              "axisId": "C2",
+              "axis": [
+                0,
+                0,
+                1
+              ],
+              "sign": -1,
+              "zeroDegrees": 0
+            }
+          ]
+        }
+      ],
+      "toolMounts": [
+        {
+          "channelId": "1",
+          "tools": {
+            "kind": "numericRange",
+            "from": 100,
+            "to": 9999
+          },
+          "carrierId": "gangToolPost",
+          "target": {
+            "mode": "execution",
+            "allowedWorkpieceCarrierIds": [
+              "mainSpindle",
+              "subSpindle"
+            ],
+            "defaultWorkpieceCarrierId": "mainSpindle"
+          }
+        },
+        {
+          "channelId": "2",
+          "tools": {
+            "kind": "numericRange",
+            "from": 100,
+            "to": 9999
+          },
+          "carrierId": "backToolUnit",
+          "target": {
+            "mode": "fixed",
+            "workpieceCarrierId": "subSpindle"
+          }
+        }
+      ],
+      "initialAxes": {
+        "C1": 0,
+        "C2": 0
+      }
+    },
+    "home_position": {
+      "X1": 30.0,
+      "Y1": 0.0,
+      "Z1": 0.0,
+      "C1": 0.0,
+      "X2": 0.0,
+      "Y2": 0.0,
+      "Z2": 0.0,
+      "C2": 0.0,
+      "X": 30.0,
+      "Y": 0.0,
+      "Z": 0.0,
+      "B": 0.0,
+      "C": 0.0
+    },
+    "tool_change_position": {
+      "default": {
+        "B": 0.0,
+        "Y": 0.0
+      },
+      "by_tool": {
+        "1100": {
+          "B": 0.0,
+          "Y": 0.0
+        }
+      }
+    }
+  },
+  "FANUC_STAR_SR10J": {
+    "name": "FANUC_STAR_SR10J",
+    "control_type": "FANUC",
+    "parser_name": "fanuc",
+    "lexer_name": "fanuc",
+    "machine_type": "TURN_MILL",
+    "channels": 2,
+    "regex_patterns": {
+      "variables": {
+        "pattern": "#(\\d+)",
+        "description": "Variables #1 - #999",
+        "range": {
+          "min": 1,
+          "max": 999
+        }
+      },
+      "keywords": {
+        "pattern": "(?![^()]*\\))((?<![A-Za-z])T0*(100|[1-9][0-9]{2,3})(?![\\d.])|M(2[0-9]{2}|[3-8][0-8]{2})|M82|M83|M20|G(?:255|266)|M30)",
+        "description": "Keywords: T100-T9999, M200-M888, M82, M83, M20",
+        "codes": {
+          "extended_tools": {
+            "pattern": "(?![^()]*\\))(?<![A-Za-z])T0*(100|[1-9][0-9]{2,3})(?![\\d.])",
+            "range": {
+              "min": 100,
+              "max": 9999
+            }
+          },
+          "m_codes_range": {
+            "pattern": "M(2[0-9]{2}|[3-8][0-8]{2})",
+            "range": {
+              "min": 200,
+              "max": 888
+            }
+          },
+          "special_m_codes": [
+            "M82",
+            "M83",
+            "M20"
+          ],
+          "g_codes": [
+            "G255",
+            "G266"
+          ],
+          "program_control": [
+            "M0",
+            "M1",
+            "M99"
+          ]
+        }
+      }
+    },
+    "axes": [
+      "X1",
+      "Y1",
+      "Z1",
+      "C1",
+      "XB",
+      "ZB",
+      "C2"
+    ],
+    "variable_pattern": "#(\\d+)",
+    "variable_prefix": "#",
+    "tool_range": [
+      0,
+      9999
+    ],
+    "tool_selection": {
+      "mode": "star",
+      "tool_digits": [
+        3,
+        4
+      ],
+      "offset_digits": [
+        1,
+        2
+      ],
+      "named_tools": false,
+      "offset_scope": "global"
+    },
+    "axis_bindings": {
+      "X": {
+        "defaultByChannel": {
+          "1": {
+            "axisId": "X1"
+          },
+          "2": {
+            "axisId": "XB"
+          }
+        },
+        "mcodeOverrides": {
+          "M171": {
+            "axisId": "XB"
+          },
+          "M172": {
+            "axisId": "X1"
+          }
+        }
+      },
+      "Y": {
+        "defaultByChannel": {
+          "1": {
+            "axisId": "Y1"
+          }
+        }
+      },
+      "Z": {
+        "defaultByChannel": {
+          "1": {
+            "axisId": "Z1"
+          },
+          "2": {
+            "axisId": "ZB"
+          }
+        }
+      },
+      "C": {
+        "defaultByChannel": {
+          "1": {
+            "targetCarrierId": "mainSpindle",
+            "axisId": "C1"
+          },
+          "2": {
+            "targetCarrierId": "subSpindle",
+            "axisId": "C2"
+          }
+        },
+        "mcodeOverrides": {
+          "M171": {
+            "targetCarrierId": "subSpindle",
+            "axisId": "C2"
+          },
+          "M172": {
+            "targetCarrierId": "mainSpindle",
+            "axisId": "C1"
+          }
+        }
+      }
+    },
+    "synchronization_strategy": "STAR_WAIT",
+    "supported_gcode_groups": [
+      "axis_binding",
+      "fanuc_alarm",
+      "variable",
+      "control_flow",
+      "star_g266",
+      "star_fanuc_tool_handler",
+      "precheck",
+      "fanuc_turn_spindle_limit",
+      "fanuc_turn_units",
+      "modal",
+      "star_mcode_modal",
+      "star_spindle",
+      "group_0_coordinate_set",
+      "group_2_speed_mode",
+      "star_spindle_fluctuation",
+      "group_5_feed_mode",
+      "star_group_16_plane",
+      "fanuc_coordinate_rotation",
+      "group_21_polar",
+      "fanuc_cutter_comp",
+      "cornering",
+      "wait_code",
+      "spindle_speed",
+      "cycle_end",
+      "star_automatic_coordinate",
+      "star_g161_step_cycle",
+      "fanuc_g92_threading",
+      "fanuc_g76_threading",
+      "fanuc_g36_circular_threading",
+      "fanuc_turn_drilling_cycles",
+      "motion"
+    ],
+    "default_plane": "G18",
+    "default_feed_mode": "FEED_PER_REV",
+    "cycle_start_code": "M20",
+    "rapid_feed_rate": 35000.0,
+    "a_axis_rollover": false,
+    "b_axis_rollover": false,
+    "c_axis_rollover": true,
+    "a_axis_shortest_path": false,
+    "b_axis_shortest_path": false,
+    "c_axis_shortest_path": true,
+    "polar_interpolate_axis": "Y",
+    "diameter_axes": [
+      "X1",
+      "Y",
+      "Y1",
+      "XB"
+    ],
+    "g96_reference_axis": "X1",
+    "circular_threading_enabled": true,
+    "step_cycle_pro_enabled": true,
+    "simulation": {
+      "schemaVersion": 1,
+      "revision": 2,
+      "modelId": "STAR_SR10J",
+      "displayName": "STAR SR-10J",
+      "fidelity": "configured",
+      "poseContract": "workpiece-tool-reference-v1",
+      "stockBindings": [
+        {
+          "frameId": "workpiece:mainSpindle",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "spindleOrigin": [
+            0,
+            0,
+            0
+          ],
+          "spindleAxis": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "frameId": "workpiece:subSpindle",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "spindleOrigin": [
+            0,
+            0,
+            0
+          ],
+          "spindleAxis": [
+            0,
+            0,
+            1
+          ]
+        }
+      ],
+      "carriers": [
+        {
+          "id": "gangToolPost",
+          "role": "tool",
+          "referenceOrientationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "rotationChain": []
+        },
+        {
+          "id": "backToolUnit",
+          "role": "tool",
+          "referenceOrientationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "rotationChain": []
+        },
+        {
+          "id": "mainSpindle",
+          "role": "workpiece",
+          "referenceOrientationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "rotationChain": [
+            {
+              "axisId": "C1",
+              "axis": [
+                0,
+                0,
+                1
+              ],
+              "sign": -1,
+              "zeroDegrees": 0
+            }
+          ]
+        },
+        {
+          "id": "subSpindle",
+          "role": "workpiece",
+          "referenceOrientationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "rotationChain": [
+            {
+              "axisId": "C2",
+              "axis": [
+                0,
+                0,
+                1
+              ],
+              "sign": -1,
+              "zeroDegrees": 0
+            }
+          ]
+        }
+      ],
+      "toolMounts": [
+        {
+          "channelId": "1",
+          "tools": {
+            "kind": "numericRange",
+            "from": 100,
+            "to": 9999
+          },
+          "carrierId": "gangToolPost",
+          "target": {
+            "mode": "execution",
+            "allowedWorkpieceCarrierIds": [
+              "mainSpindle",
+              "subSpindle"
+            ],
+            "defaultWorkpieceCarrierId": "mainSpindle"
+          }
+        },
+        {
+          "channelId": "2",
+          "tools": {
+            "kind": "numericRange",
+            "from": 100,
+            "to": 9999
+          },
+          "carrierId": "backToolUnit",
+          "target": {
+            "mode": "fixed",
+            "workpieceCarrierId": "subSpindle"
+          }
+        }
+      ],
+      "initialAxes": {
+        "C1": 0,
+        "C2": 0
+      }
+    },
+    "home_position": {
+      "X1": 30.0,
+      "Y1": 0.0,
+      "Z1": 0.0,
+      "C1": 0.0,
+      "XB": 0.0,
+      "ZB": -30.0,
+      "C2": 0.0,
+      "X": 30.0,
+      "Y": 0.0,
+      "Z": 0.0,
+      "B": 0.0,
+      "C": 0.0
+    },
+    "tool_change_position": {
+      "default": {
+        "B": 0.0,
+        "Y": 0.0
+      },
+      "by_tool": {
+        "1100": {
+          "B": 0.0,
+          "Y": 0.0
+        }
+      }
+    }
+  },
+  "FANUC_STAR_SD26G": {
+    "name": "FANUC_STAR_SD26G",
+    "control_type": "FANUC",
+    "parser_name": "fanuc",
+    "lexer_name": "fanuc",
+    "machine_type": "TURN_MILL",
+    "channels": 2,
+    "regex_patterns": {
+      "variables": {
+        "pattern": "#(\\d+)",
+        "description": "Variables #1 - #999",
+        "range": {
+          "min": 1,
+          "max": 999
+        }
+      },
+      "keywords": {
+        "pattern": "(?![^()]*\\))((?<![A-Za-z])T0*(100|[1-9][0-9]{2,3})(?![\\d.])|M(2[0-9]{2}|[3-8][0-8]{2})|M82|M83|M20|G(?:255|266)|M30)",
+        "description": "Keywords: T100-T9999, M200-M888, M82, M83, M20",
+        "codes": {
+          "extended_tools": {
+            "pattern": "(?![^()]*\\))(?<![A-Za-z])T0*(100|[1-9][0-9]{2,3})(?![\\d.])",
+            "range": {
+              "min": 100,
+              "max": 9999
+            }
+          },
+          "m_codes_range": {
+            "pattern": "M(2[0-9]{2}|[3-8][0-8]{2})",
+            "range": {
+              "min": 200,
+              "max": 888
+            }
+          },
+          "special_m_codes": [
+            "M82",
+            "M83",
+            "M20"
+          ],
+          "g_codes": [
+            "G255",
+            "G266"
+          ],
+          "program_control": [
+            "M0",
+            "M1",
+            "M99"
+          ]
+        }
+      }
+    },
+    "axes": [
+      "X1",
+      "Y1",
+      "Z1",
+      "B1",
+      "C1",
+      "X2",
+      "Y2",
+      "Z2",
+      "C2"
+    ],
+    "variable_pattern": "#(\\d+)",
+    "variable_prefix": "#",
+    "tool_range": [
+      0,
+      9999
+    ],
+    "tool_selection": {
+      "mode": "star",
+      "tool_digits": [
+        3,
+        4
+      ],
+      "offset_digits": [
+        1,
+        2
+      ],
+      "named_tools": false,
+      "offset_scope": "global"
+    },
+    "axis_bindings": {
+      "X": {
+        "defaultByChannel": {
+          "1": {
+            "axisId": "X1"
+          },
+          "2": {
+            "axisId": "X2"
+          }
+        },
+        "mcodeOverrides": {
+          "M171": {
+            "axisId": "X2"
+          },
+          "M172": {
+            "axisId": "X1"
+          }
+        }
+      },
+      "Y": {
+        "defaultByChannel": {
+          "1": {
+            "axisId": "Y1"
+          },
+          "2": {
+            "axisId": "Y2"
+          }
+        }
+      },
+      "Z": {
+        "defaultByChannel": {
+          "1": {
+            "axisId": "Z1"
+          },
+          "2": {
+            "axisId": "Z2"
+          }
+        }
+      },
+      "B": {
+        "defaultByChannel": {
+          "1": {
+            "targetCarrierId": "tiltingToolUnit",
+            "axisId": "B1"
+          }
+        }
+      },
+      "C": {
+        "defaultByChannel": {
+          "1": {
+            "targetCarrierId": "mainSpindle",
+            "axisId": "C1"
+          },
+          "2": {
+            "targetCarrierId": "subSpindle",
+            "axisId": "C2"
+          }
+        },
+        "mcodeOverrides": {
+          "M171": {
+            "targetCarrierId": "subSpindle",
+            "axisId": "C2"
+          },
+          "M172": {
+            "targetCarrierId": "mainSpindle",
+            "axisId": "C1"
+          }
+        }
+      }
+    },
+    "synchronization_strategy": "STAR_WAIT",
+    "supported_gcode_groups": [
+      "axis_binding",
+      "fanuc_alarm",
+      "variable",
+      "control_flow",
+      "star_g266",
+      "star_fanuc_tool_handler",
+      "precheck",
+      "fanuc_turn_spindle_limit",
+      "fanuc_turn_units",
+      "modal",
+      "star_mcode_modal",
+      "star_spindle",
+      "group_0_coordinate_set",
+      "group_2_speed_mode",
+      "star_spindle_fluctuation",
+      "group_5_feed_mode",
+      "star_group_16_plane",
+      "fanuc_coordinate_rotation",
+      "group_21_polar",
+      "fanuc_cutter_comp",
+      "cornering",
+      "wait_code",
+      "spindle_speed",
+      "cycle_end",
+      "star_automatic_coordinate",
+      "star_b1_tilting",
+      "star_g161_step_cycle",
+      "fanuc_g92_threading",
+      "fanuc_g76_threading",
+      "fanuc_g36_circular_threading",
+      "fanuc_turn_drilling_cycles",
+      "motion"
+    ],
+    "default_plane": "G18",
+    "default_feed_mode": "FEED_PER_REV",
+    "cycle_start_code": "M20",
+    "rapid_feed_rate": 36000.0,
+    "a_axis_rollover": false,
+    "b_axis_rollover": false,
+    "c_axis_rollover": true,
+    "a_axis_shortest_path": false,
+    "b_axis_shortest_path": false,
+    "c_axis_shortest_path": true,
+    "polar_interpolate_axis": "Y",
+    "diameter_axes": [
+      "X1",
+      "Y",
+      "Y1",
+      "X2",
+      "Y2"
+    ],
+    "g96_reference_axis": "X1",
+    "circular_threading_enabled": true,
+    "step_cycle_pro_enabled": true,
+    "simulation": {
+      "schemaVersion": 1,
+      "revision": 2,
+      "modelId": "STAR_SD26G",
+      "displayName": "STAR SD-26G",
+      "fidelity": "configured",
+      "poseContract": "workpiece-tool-reference-v1",
+      "stockBindings": [
+        {
+          "frameId": "workpiece:mainSpindle",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "spindleOrigin": [
+            0,
+            0,
+            0
+          ],
+          "spindleAxis": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "frameId": "workpiece:subSpindle",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "spindleOrigin": [
+            0,
+            0,
+            0
+          ],
+          "spindleAxis": [
+            0,
+            0,
+            1
+          ]
+        }
+      ],
+      "carriers": [
+        {
+          "id": "gangToolPost",
+          "role": "tool",
+          "referenceOrientationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "rotationChain": []
+        },
+        {
+          "id": "tiltingToolUnit",
+          "role": "tool",
+          "referenceOrientationDegrees": [
+            0,
+            90,
+            0
+          ],
+          "rotationChain": [
+            {
+              "axisId": "B1",
+              "axis": [
+                0,
+                1,
+                0
+              ],
+              "sign": 1,
+              "zeroDegrees": 90
+            }
+          ]
+        },
+        {
+          "id": "backToolUnit",
+          "role": "tool",
+          "referenceOrientationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "rotationChain": []
+        },
+        {
+          "id": "mainSpindle",
+          "role": "workpiece",
+          "referenceOrientationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "rotationChain": [
+            {
+              "axisId": "C1",
+              "axis": [
+                0,
+                0,
+                1
+              ],
+              "sign": -1,
+              "zeroDegrees": 0
+            }
+          ]
+        },
+        {
+          "id": "subSpindle",
+          "role": "workpiece",
+          "referenceOrientationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "rotationChain": [
+            {
+              "axisId": "C2",
+              "axis": [
+                0,
+                0,
+                1
+              ],
+              "sign": -1,
+              "zeroDegrees": 0
+            }
+          ]
+        }
+      ],
+      "toolMounts": [
+        {
+          "channelId": "1",
+          "tools": {
+            "kind": "numericRange",
+            "from": 100,
+            "to": 1599
+          },
+          "carrierId": "gangToolPost",
+          "target": {
+            "mode": "execution",
+            "allowedWorkpieceCarrierIds": [
+              "mainSpindle",
+              "subSpindle"
+            ],
+            "defaultWorkpieceCarrierId": "mainSpindle"
+          }
+        },
+        {
+          "channelId": "1",
+          "tools": {
+            "kind": "numericRange",
+            "from": 1600,
+            "to": 1999
+          },
+          "carrierId": "tiltingToolUnit",
+          "target": {
+            "mode": "execution",
+            "allowedWorkpieceCarrierIds": [
+              "mainSpindle",
+              "subSpindle"
+            ],
+            "defaultWorkpieceCarrierId": "mainSpindle"
+          }
+        },
+        {
+          "channelId": "1",
+          "tools": {
+            "kind": "numericRange",
+            "from": 2000,
+            "to": 9999
+          },
+          "carrierId": "gangToolPost",
+          "target": {
+            "mode": "execution",
+            "allowedWorkpieceCarrierIds": [
+              "mainSpindle",
+              "subSpindle"
+            ],
+            "defaultWorkpieceCarrierId": "mainSpindle"
+          }
+        },
+        {
+          "channelId": "2",
+          "tools": {
+            "kind": "numericRange",
+            "from": 100,
+            "to": 9999
+          },
+          "carrierId": "backToolUnit",
+          "target": {
+            "mode": "fixed",
+            "workpieceCarrierId": "subSpindle"
+          }
+        }
+      ],
+      "initialAxes": {
+        "B1": 0,
+        "C1": 0,
+        "C2": 0
+      }
+    },
+    "home_position": {
+      "X1": 30.0,
+      "Y1": 0.0,
+      "Z1": 0.0,
+      "B1": 0.0,
+      "C1": 0.0,
+      "X2": 0.0,
+      "Y2": 0.0,
+      "Z2": -30.0,
+      "C2": 0.0,
+      "X": 30.0,
+      "Y": 0.0,
+      "Z": 0.0,
+      "B": 0.0,
+      "C": 0.0
+    },
+    "tool_change_position": {
+      "default": {
+        "B": 0.0,
+        "Y": 0.0
+      },
+      "by_tool": {
+        "1100": {
+          "B": 0.0,
+          "Y": 0.0
+        }
+      }
+    }
+  },
+  "FANUC_STAR_SB20RG": {
+    "name": "FANUC_STAR_SB20RG",
+    "control_type": "FANUC",
+    "parser_name": "fanuc",
+    "lexer_name": "fanuc",
+    "machine_type": "TURN_MILL",
+    "channels": 2,
+    "regex_patterns": {
+      "variables": {
+        "pattern": "#(\\d+)",
+        "description": "Variables #1 - #999",
+        "range": {
+          "min": 1,
+          "max": 999
+        }
+      },
+      "keywords": {
+        "pattern": "(?![^()]*\\))((?<![A-Za-z])T0*(100|[1-9][0-9]{2,3})(?![\\d.])|M(2[0-9]{2}|[3-8][0-8]{2})|M82|M83|M20|G(?:255|266)|M30)",
+        "description": "Keywords: T100-T9999, M200-M888, M82, M83, M20, G255, G266, M30",
+        "codes": {
+          "extended_tools": {
+            "pattern": "(?![^()]*\\))(?<![A-Za-z])T0*(100|[1-9][0-9]{2,3})(?![\\d.])",
+            "range": {
+              "min": 100,
+              "max": 9999
+            }
+          },
+          "m_codes_range": {
+            "pattern": "M(2[0-9]{2}|[3-8][0-8]{2})",
+            "range": {
+              "min": 200,
+              "max": 888
+            }
+          },
+          "special_m_codes": [
+            "M82",
+            "M83",
+            "M20"
+          ],
+          "g_codes": [
+            "G255",
+            "G266"
+          ],
+          "program_control": [
+            "M0",
+            "M1",
+            "M3",
+            "M5",
+            "M30"
+          ]
+        }
+      }
+    },
+    "axes": [
+      "X1",
+      "Y1",
+      "Z1",
+      "C1",
+      "X2",
+      "Z2",
+      "C2"
+    ],
+    "variable_pattern": "#(\\d+)",
+    "variable_prefix": "#",
+    "tool_range": [
+      0,
+      9999
+    ],
+    "tool_selection": {
+      "mode": "star",
+      "tool_digits": [
+        3,
+        4
+      ],
+      "offset_digits": [
+        1,
+        2
+      ],
+      "named_tools": false,
+      "offset_scope": "global"
+    },
+    "axis_bindings": {
+      "X": {
+        "defaultByChannel": {
+          "1": {
+            "axisId": "X1"
+          },
+          "2": {
+            "axisId": "X2"
+          }
+        },
+        "mcodeOverrides": {
+          "M171": {
+            "axisId": "X2"
+          },
+          "M172": {
+            "axisId": "X1"
+          }
+        }
+      },
+      "Y": {
+        "defaultByChannel": {
+          "1": {
+            "axisId": "Y1"
+          }
+        }
+      },
+      "Z": {
+        "defaultByChannel": {
+          "1": {
+            "axisId": "Z1"
+          },
+          "2": {
+            "axisId": "Z2"
+          }
+        }
+      },
+      "C": {
+        "defaultByChannel": {
+          "1": {
+            "targetCarrierId": "mainSpindle",
+            "axisId": "C1"
+          },
+          "2": {
+            "targetCarrierId": "subSpindle",
+            "axisId": "C2"
+          }
+        },
+        "mcodeOverrides": {
+          "M171": {
+            "targetCarrierId": "subSpindle",
+            "axisId": "C2"
+          },
+          "M172": {
+            "targetCarrierId": "mainSpindle",
+            "axisId": "C1"
+          }
+        }
+      }
+    },
+    "synchronization_strategy": "STAR_WAIT",
+    "supported_gcode_groups": [
+      "axis_binding",
+      "fanuc_alarm",
+      "variable",
+      "control_flow",
+      "star_g266",
+      "star_fanuc_tool_handler",
+      "precheck",
+      "fanuc_turn_spindle_limit",
+      "fanuc_turn_units",
+      "modal",
+      "star_mcode_modal",
+      "star_spindle",
+      "group_0_coordinate_set",
+      "group_2_speed_mode",
+      "star_spindle_fluctuation",
+      "group_5_feed_mode",
+      "star_group_16_plane",
+      "fanuc_coordinate_rotation",
+      "group_21_polar",
+      "fanuc_cutter_comp",
+      "cornering",
+      "wait_code",
+      "spindle_speed",
+      "cycle_end",
+      "star_automatic_coordinate",
+      "star_g161_step_cycle",
+      "fanuc_g92_threading",
+      "fanuc_g76_threading",
+      "fanuc_g36_circular_threading",
+      "fanuc_turn_drilling_cycles",
+      "motion"
+    ],
+    "default_plane": "G18",
+    "default_feed_mode": "FEED_PER_REV",
+    "cycle_start_code": "M20",
+    "rapid_feed_rate": 35000.0,
+    "a_axis_rollover": false,
+    "b_axis_rollover": false,
+    "c_axis_rollover": true,
+    "a_axis_shortest_path": false,
+    "b_axis_shortest_path": false,
+    "c_axis_shortest_path": true,
+    "polar_interpolate_axis": "Y",
+    "diameter_axes": [
+      "X1",
+      "Y",
+      "Y1",
+      "X2"
+    ],
+    "g96_reference_axis": "X1",
+    "circular_threading_enabled": true,
+    "step_cycle_pro_enabled": true,
+    "simulation": {
+      "schemaVersion": 1,
+      "revision": 2,
+      "modelId": "STAR_SB20RG",
+      "displayName": "STAR SB-20R Type G",
+      "fidelity": "configured",
+      "poseContract": "workpiece-tool-reference-v1",
+      "stockBindings": [
+        {
+          "frameId": "workpiece:mainSpindle",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "spindleOrigin": [
+            0,
+            0,
+            0
+          ],
+          "spindleAxis": [
+            0,
+            0,
+            1
+          ]
+        },
+        {
+          "frameId": "workpiece:subSpindle",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "spindleOrigin": [
+            0,
+            0,
+            0
+          ],
+          "spindleAxis": [
+            0,
+            0,
+            1
+          ]
+        }
+      ],
+      "carriers": [
+        {
+          "id": "gangToolPost",
+          "role": "tool",
+          "referenceOrientationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "rotationChain": []
+        },
+        {
+          "id": "backToolUnit",
+          "role": "tool",
+          "referenceOrientationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "rotationChain": []
+        },
+        {
+          "id": "mainSpindle",
+          "role": "workpiece",
+          "referenceOrientationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "rotationChain": [
+            {
+              "axisId": "C1",
+              "axis": [
+                0,
+                0,
+                1
+              ],
+              "sign": -1,
+              "zeroDegrees": 0
+            }
+          ]
+        },
+        {
+          "id": "subSpindle",
+          "role": "workpiece",
+          "referenceOrientationDegrees": [
+            0,
+            0,
+            0
+          ],
+          "rotationChain": [
+            {
+              "axisId": "C2",
+              "axis": [
+                0,
+                0,
+                1
+              ],
+              "sign": -1,
+              "zeroDegrees": 0
+            }
+          ]
+        }
+      ],
+      "toolMounts": [
+        {
+          "channelId": "1",
+          "tools": {
+            "kind": "numericRange",
+            "from": 100,
+            "to": 9999
+          },
+          "carrierId": "gangToolPost",
+          "target": {
+            "mode": "execution",
+            "allowedWorkpieceCarrierIds": [
+              "mainSpindle",
+              "subSpindle"
+            ],
+            "defaultWorkpieceCarrierId": "mainSpindle"
+          }
+        },
+        {
+          "channelId": "2",
+          "tools": {
+            "kind": "numericRange",
+            "from": 100,
+            "to": 9999
+          },
+          "carrierId": "backToolUnit",
+          "target": {
+            "mode": "fixed",
+            "workpieceCarrierId": "subSpindle"
+          }
+        }
+      ],
+      "initialAxes": {
+        "C1": 0,
+        "C2": 0
+      }
+    },
+    "home_position": {
+      "X1": 30.0,
+      "Y1": 0.0,
+      "Z1": 0.0,
+      "C1": 0.0,
+      "X2": 0.0,
+      "Z2": -30.0,
+      "C2": 0.0,
+      "X": 30.0,
+      "Y": 0.0,
+      "Z": 0.0,
+      "B": 0.0,
+      "C": 0.0
+    },
+    "tool_change_position": {
+      "default": {
+        "B": 0.0,
+        "Y": 0.0
+      },
+      "by_tool": {
+        "1100": {
+          "B": 0.0,
+          "Y": 0.0
+        }
+      }
+    }
+  },
   "FANUC_STAR_SV20R": {
     "name": "FANUC_STAR_SV20R",
     "control_type": "FANUC",

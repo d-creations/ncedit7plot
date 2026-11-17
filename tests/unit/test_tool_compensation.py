@@ -128,6 +128,28 @@ class TestToolPathCompensator(unittest.TestCase):
 
         self.assertNotEqual(results[0], results[1])
 
+    def test_out_of_plane_y_move_preserves_g18_and_g118_compensation_offset(self):
+        for plane in ("X_Z", "Z_X"):
+            state = CNCState(
+                machine_config=get_machine_config("FANUC_STAR_x-D_y-R_z_R"),
+                tool_path_mode="center",
+            )
+            state.extra["g_group_16_plane"] = plane
+            state.extra["active_tool_number"] = 1
+            state.tool_compensation = ToolCompensationState(
+                radius_mode="RIGHT",
+                radius=1.0,
+                tip_orientation=3,
+            )
+            compensator = ToolPathCompensator()
+
+            first = compensator.project([Point(0, 0, 0), Point(10, 0, 0)], state)
+            y_move = compensator.project([Point(10, 0, 0), Point(10, 5, 0)], state)
+
+            self.assertEqual((y_move[0].x, y_move[0].z), (first[-1].x, first[-1].z))
+            self.assertEqual((y_move[-1].x, y_move[-1].z), (first[-1].x, first[-1].z))
+            self.assertEqual((y_move[0].y, y_move[-1].y), (0.0, 5.0))
+
 
 if __name__ == "__main__":
     unittest.main()

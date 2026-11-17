@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.5.0] - 2026-11-17
+
+### Added
+- Added `FANUC_STAR_SR20J2B` (STAR SR-20JII Type B, 8-axis 2-channel) machine profile and simulation configuration in `machines.json`.
+- Added `FANUC_STAR_SR10J` (STAR SR-10J, 7-axis 2-channel with `XB`/`ZB` sub-spindle axes) machine profile and simulation configuration in `machines.json`.
+- Added `FANUC_STAR_SD26G` (STAR SD-26G, 9-axis 2-channel with `B1` tilting tool unit and `36000 mm/min` rapid feed) machine profile and simulation configuration in `machines.json`.
+- Added `FANUC_STAR_SB20RG` (STAR SB-20R Type G, 7-axis 2-channel without `Y2`/`B1`) machine profile and simulation configuration in `machines.json`.
+- Added machine configuration and regex pattern unit tests for the new STAR profiles in `tests/unit/test_machine_setup.py`.
+
+---
+
 ## [0.4.3] - 2026-11-12
 
 ### Added

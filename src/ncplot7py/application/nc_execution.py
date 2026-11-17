@@ -442,6 +442,8 @@ class NCExecutionEngine:
                     "motionContext": dict(context) if isinstance(context, dict) else context,
                     "machiningMode": (context.get("machiningMode") or "unknown") if context is not None else "unknown",
                 }
+                if isinstance(context, dict) and isinstance(context.get("threading"), dict):
+                    plot_line["threading"] = dict(context["threading"])
                 tool = pose_tools.get(tool_number) if isinstance(pose_tools, dict) else None
                 if simulation and tool is not None:
                     try:

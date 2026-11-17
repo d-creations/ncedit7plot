@@ -155,6 +155,10 @@ class TestMachineSetup(unittest.TestCase):
         for machine_name in [
             "FANUC_STAR_x-D_y-R_z_R",
             "FANUC_STAR_SR20R_IV_B",
+            "FANUC_STAR_SR20J2B",
+            "FANUC_STAR_SR10J",
+            "FANUC_STAR_SD26G",
+            "FANUC_STAR_SB20RG",
             "FANUC_STAR_SV20R",
             "FANUC_STAR_SG42",
         ]:
@@ -220,6 +224,54 @@ class TestMachineSetup(unittest.TestCase):
         self.assertEqual(get_machine_config("FANUC_MILL").parser_name, "fanuc")
         self.assertEqual(get_machine_config("FANUC_TURN").parser_name, "fanuc")
         self.assertEqual(get_machine_config("SIEMENS_840DI").parser_name, "siemens")
+
+    def test_star_sr20j2b_machine_config(self):
+        config = get_machine_config("FANUC_STAR_SR20J2B")
+        self.assertEqual(config.channels, 2)
+        self.assertEqual(config.axes, ("X1", "Y1", "Z1", "C1", "X2", "Y2", "Z2", "C2"))
+        self.assertNotIn("B", config.axis_bindings)
+        self.assertNotIn("star_b1_tilting", config.supported_gcode_groups)
+        self.assertEqual(config.diameter_axes, ("X1", "Y", "Y1", "X2", "Y2"))
+        self.assertEqual(config.simulation["modelId"], "STAR_SR20J2B")
+        self.assertEqual(
+            [carrier["id"] for carrier in config.simulation["carriers"]],
+            ["gangToolPost", "backToolUnit", "mainSpindle", "subSpindle"],
+        )
+
+    def test_star_sr10j_and_sd26g_machine_configs(self):
+        sr10j = get_machine_config("FANUC_STAR_SR10J")
+        self.assertEqual(sr10j.channels, 2)
+        self.assertEqual(sr10j.axes, ("X1", "Y1", "Z1", "C1", "XB", "ZB", "C2"))
+        self.assertEqual(sr10j.axis_bindings["X"]["defaultByChannel"]["2"]["axisId"], "XB")
+        self.assertEqual(sr10j.axis_bindings["Z"]["defaultByChannel"]["2"]["axisId"], "ZB")
+        self.assertNotIn("B", sr10j.axis_bindings)
+        self.assertNotIn("star_b1_tilting", sr10j.supported_gcode_groups)
+        self.assertEqual(sr10j.diameter_axes, ("X1", "Y", "Y1", "XB"))
+        self.assertEqual(sr10j.rapid_feed_rate, 35000.0)
+        self.assertEqual(sr10j.simulation["modelId"], "STAR_SR10J")
+
+        sd26g = get_machine_config("FANUC_STAR_SD26G")
+        self.assertEqual(sd26g.channels, 2)
+        self.assertEqual(sd26g.axes, ("X1", "Y1", "Z1", "B1", "C1", "X2", "Y2", "Z2", "C2"))
+        self.assertIn("B", sd26g.axis_bindings)
+        self.assertIn("star_b1_tilting", sd26g.supported_gcode_groups)
+        self.assertEqual(sd26g.diameter_axes, ("X1", "Y", "Y1", "X2", "Y2"))
+        self.assertEqual(sd26g.rapid_feed_rate, 36000.0)
+        self.assertEqual(sd26g.simulation["modelId"], "STAR_SD26G")
+        self.assertEqual(
+            [carrier["id"] for carrier in sd26g.simulation["carriers"]],
+            ["gangToolPost", "tiltingToolUnit", "backToolUnit", "mainSpindle", "subSpindle"],
+        )
+
+        sb20rg = get_machine_config("FANUC_STAR_SB20RG")
+        self.assertEqual(sb20rg.channels, 2)
+        self.assertEqual(sb20rg.axes, ("X1", "Y1", "Z1", "C1", "X2", "Z2", "C2"))
+        self.assertNotIn("2", sb20rg.axis_bindings["Y"]["defaultByChannel"])
+        self.assertNotIn("B", sb20rg.axis_bindings)
+        self.assertNotIn("star_b1_tilting", sb20rg.supported_gcode_groups)
+        self.assertEqual(sb20rg.diameter_axes, ("X1", "Y", "Y1", "X2"))
+        self.assertEqual(sb20rg.rapid_feed_rate, 35000.0)
+        self.assertEqual(sb20rg.simulation["modelId"], "STAR_SB20RG")
 
 
 if __name__ == '__main__':

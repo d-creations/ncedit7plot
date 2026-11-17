@@ -169,6 +169,8 @@ def build_segments_from_engine_output(canal_output: Dict[str, Any]) -> Dict[str,
             "poses": entry.get("poses"),
             "points": points,
         }
+        if isinstance(entry.get("threading"), dict):
+            seg["threading"] = entry["threading"]
         segments.append(seg)
         try:
             segment_time = float(t)

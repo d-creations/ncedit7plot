@@ -41,6 +41,10 @@ class TestFanucThreadingCycles(unittest.TestCase):
         self.assertEqual([node.motion_traversal for node in nodes], ["RAPID", "FEED", "RAPID", "RAPID"])
         self.assertEqual(nodes[1].motion_source_code, "G92")
         self.assertEqual({node.motion_geometry for node in nodes}, {"LINEAR"})
+        self.assertEqual(nodes[1].motion_context["machiningMode"], "threading")
+        self.assertEqual(nodes[1].motion_context["threading"], {"lead": 2.0, "startAngleDeg": 90.0})
+        self.assertNotIn("threading", nodes[0].motion_context)
+        self.assertNotEqual(nodes[0].motion_context["machiningMode"], "threading")
 
     def test_g92_is_modal_for_additional_depths(self):
         state, canal = self._canal()
@@ -76,6 +80,10 @@ class TestFanucThreadingCycles(unittest.TestCase):
         self.assertEqual({node.motion_traversal for node in nodes}, {"RAPID", "FEED"})
         self.assertEqual({node.motion_source_code for node in nodes}, {"G00", "G76"})
         self.assertEqual({node.nc_code_line_nr for node in nodes}, {20})
+        feed_nodes = [node for node in nodes if node.motion_traversal == "FEED"]
+        self.assertEqual(len(feed_nodes), len(depths))
+        self.assertTrue(all(node.motion_context["machiningMode"] == "threading" for node in feed_nodes))
+        self.assertTrue(all(node.motion_context["threading"] == {"lead": 2.0, "startAngleDeg": 0.0} for node in feed_nodes))
 
     def test_g76_requires_setup_block(self):
         _state, canal = self._canal()
@@ -112,6 +120,8 @@ class TestFanucThreadingCycles(unittest.TestCase):
         self.assertEqual(node.motion_geometry, "ARC_CCW")
         self.assertEqual(node.motion_traversal, "FEED")
         self.assertEqual(node.motion_source_code, "G36")
+        self.assertEqual(node.motion_context["machiningMode"], "threading")
+        self.assertEqual(node.motion_context["threading"], {"lead": 2.0, "startAngleDeg": 0.0})
         self.assertGreater(len(canal.get_tool_path()[0][0]), 2)
 
     def test_g36_requires_machine_option(self):

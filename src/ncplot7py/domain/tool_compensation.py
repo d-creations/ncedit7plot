@@ -214,6 +214,15 @@ class ToolPathCompensator:
             for start, end in zip(points, points[1:])
         )
         if not has_planar_motion:
+            if (
+                not compensation.startup_pending
+                and self._previous_signature == signature
+                and self._previous_points
+            ):
+                last_point = self._previous_points[-1]
+                for point in projected:
+                    for axis in axes:
+                        setattr(point, axis, getattr(last_point, axis))
             return projected
 
         if compensation.startup_pending:

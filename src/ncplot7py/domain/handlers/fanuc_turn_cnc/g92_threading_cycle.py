@@ -55,6 +55,7 @@ class FanucG92ThreadingCycleHandler(Handler):
         assert end_r is not None and end_z is not None
         taper = float(words.get("R", 0.0))
         lead = float(words["F"])
+        start_angle_deg = float(words.get("Q", 0.0)) * 0.001
 
         emitter = ThreadingPrimitiveEmitter()
         points: List[Point] = []
@@ -67,14 +68,19 @@ class FanucG92ThreadingCycleHandler(Handler):
         ]
         for target, rapid, operation_lead in operations:
             moved, elapsed = emitter.linear(
-                target, state, rapid=rapid, source_code="G92", lead=operation_lead
+                target,
+                state,
+                rapid=rapid,
+                source_code="G92",
+                lead=operation_lead,
+                start_angle_deg=start_angle_deg if operation_lead is not None else 0.0,
             )
             points.extend(moved)
             duration += elapsed
 
         node.set_generated_motion_segments(emitter.segments)
         state.fanuc_state.threading_active = "G92"
-        state.fanuc_state.threading_start_angle = float(words.get("Q", 0.0)) * 0.001
+        state.fanuc_state.threading_start_angle = start_angle_deg
         return points, duration
 
     def _validate_thread_state(self, node: NCCommandNode, state: CNCState, words: Dict[str, str]) -> None:
